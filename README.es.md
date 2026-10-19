@@ -5,17 +5,20 @@
 
 *[Read in English](README.md)*
 
-Háblale a tu casa. Presiona un botón en tu dashboard, di algo, suelta, y tu mensaje suena en los altavoces que elegiste: una habitación, varias o toda la casa.
+Háblale a tu casa. Presiona un botón en tu dashboard y di algo, o escribe un mensaje, y suena en los altavoces que elegiste: una habitación, varias o toda la casa.
 
-<img src="docs/images/card.jpg" alt="Tarjetas de Voice Announcement en un dashboard" width="420">
+<img src="docs/images/layouts.jpg" alt="Los cuatro diseños de Voice Announcement" width="620">
 
 ## Qué incluye
 
 - **Una tarjeta y un badge** que graban un mensaje de voz desde cualquier navegador o desde la app de Home Assistant.
+- **Mensajes escritos y mensajes rápidos.** Si agregas un motor de texto a voz, la misma tarjeta lee en voz alta lo que escribes. Guarda las frases que más usas y envíalas con un toque.
+- **Cuatro diseños:** tile, un botón vertical grande para popups, un cuadro de mensaje como Assist y pestañas de voz y texto.
 - **Uno o varios altavoces.** Si indicas varios, la tarjeta muestra chips para elegir a dónde va el mensaje, con un atajo *Todos*. Puedes permitir varios a la vez o solo uno.
-- **Mantener para hablar o tocar para hablar.** También funciona con teclado: mantén Espacio o Enter.
-- **Modo anuncio.** En los altavoces compatibles, la música baja mientras hablas y luego continúa.
+- **Mantener para hablar o tocar para hablar.** También con teclado: mantén Espacio o Enter, y presiona Enter para enviar texto.
+- **Modo anuncio.** En los altavoces compatibles, la música baja durante el mensaje y luego continúa.
 - **Suena en casi cualquier parlante.** Por defecto las grabaciones se convierten a MP3, así que HomePod, Google y Nest, Sonos, Music Assistant y la mayoría de los reproductores pueden reproducirlas.
+- **Personaliza todo** con [UIX](https://github.com/Lint-Free-Technology/uix), card-mod o variables CSS.
 - **Un editor visual** que se ve y funciona como los editores de tarjetas nativos de Home Assistant, en español e inglés.
 - **Privado por defecto.** Para subir audio hace falta un usuario de Home Assistant con permiso para controlar los altavoces elegidos. Las grabaciones se borran solas a los 7 días.
 
@@ -24,6 +27,7 @@ Háblale a tu casa. Presiona un botón en tu dashboard, di algo, suelta, y tu me
 - Home Assistant 2026.6 o superior.
 - `ffmpeg` y `ffprobe`. Ya vienen incluidos en Home Assistant OS y en las imágenes de contenedor oficiales.
 - Un navegador o la app de Home Assistant con acceso al micrófono. Los navegadores solo permiten el micrófono en páginas **HTTPS** (o en `http://localhost`), así que abre Home Assistant por su dirección HTTPS.
+- Para mensajes escritos: cualquier integración de texto a voz, como Home Assistant Cloud, Google Translate o Piper.
 
 ## Instalación
 
@@ -45,7 +49,7 @@ La tarjeta y el badge se cargan solos. No hace falta agregar un recurso al dashb
 
 ## Agregar la tarjeta
 
-Edita un dashboard, elige **Añadir tarjeta** y busca **Voice Announcement**. Elige uno o más altavoces y listo. Todo lo demás es opcional.
+Edita un dashboard, elige **Añadir tarjeta** y busca **Voice Announcement**. Elige uno o más altavoces y un diseño, y listo. Todo lo demás es opcional.
 
 <img src="docs/images/editor.jpg" alt="El editor de la tarjeta Voice Announcement" width="560">
 
@@ -55,6 +59,17 @@ Lo mismo en YAML:
 type: custom:voice-announcement-card
 entity_id: media_player.kitchen
 ```
+
+### Diseños
+
+| Diseño | Cómo se ve | Ideal para |
+| --- | --- | --- |
+| `horizontal` | Una tarjeta tile: botón junto al texto. Con texto a voz, un botón de teclado abre el cuadro de mensaje. | Dashboards compactos. |
+| `vertical` | Un botón grande arriba y el cuadro de mensaje debajo. | Popups y teléfonos. |
+| `composer` | Un cuadro de mensaje con el micrófono al lado, como Assist. El micrófono se convierte en "enviar" al escribir. | Hablar y escribir por igual. |
+| `tabs` | Pestañas *Voz* y *Texto*. | Separar voz y texto. |
+
+`composer` y `tabs` necesitan un motor de texto a voz. Sin él, la tarjeta usa el diseño `horizontal`.
 
 ### Elegir entre varios altavoces
 
@@ -71,6 +86,27 @@ selection_mode: multiple   # o "single" para permitir un solo altavoz a la vez
 
 Con `selection_mode: multiple` también aparece el chip **Todos**. Con `single`, al elegir un altavoz se reemplaza el anterior.
 
+### Mensajes escritos y mensajes rápidos
+
+Elige un motor en **Texto a voz** y la tarjeta tendrá un cuadro de mensaje. Los mensajes rápidos aparecen como chips que se envían con un toque.
+
+```yaml
+type: custom:voice-announcement-card
+layout: composer
+entity_id:
+  - media_player.kitchen
+  - media_player.living_room
+tts_engine: tts.home_assistant_cloud
+tts_language: es-ES        # opcional
+tts_voice: ElviraNeural    # opcional, solo si tu motor tiene voces
+quick_messages:
+  - A comer
+  - Ya llegué
+  - Nos vamos en 5 minutos
+```
+
+Los mensajes escritos suenan en los mismos altavoces que las grabaciones y con el mismo modo anuncio.
+
 ### Un intercomunicador pequeño para un popup
 
 Esta sección funciona sola o dentro de un popup. Usa siete altavoces llamados `media_player.player1` a `media_player.player7`:
@@ -84,6 +120,10 @@ cards:
   - type: custom:voice-announcement-card
     layout: vertical
     selection_mode: multiple
+    tts_engine: tts.home_assistant_cloud
+    quick_messages:
+      - A comer
+      - Nos vamos
     entity_id:
       - media_player.player1
       - media_player.player2
@@ -109,6 +149,7 @@ tap_action:
     content:
       type: custom:voice-announcement-card
       layout: vertical
+      tts_engine: tts.home_assistant_cloud
       entity_id:
         - media_player.player1
         - media_player.player2
@@ -121,7 +162,7 @@ tap_action:
 
 ### Badge
 
-El badge es un botón redondo y compacto para la parte superior de una vista. Reproduce en todos los altavoces de su lista.
+El badge es un botón redondo y compacto para la parte superior de una vista. Graba voz y la reproduce en todos los altavoces de su lista.
 
 ```yaml
 type: custom:voice-announcement-badge
@@ -133,16 +174,20 @@ entity_id: media_player.kitchen
 | Opción | Por defecto | Qué hace |
 | --- | --- | --- |
 | `entity_id` | obligatoria | Un reproductor multimedia o una lista de ellos. |
+| `layout` | `horizontal` | `horizontal`, `vertical`, `composer` o `tabs`. Ver [Diseños](#diseños). |
 | `recording_mode` | `hold` | `hold` graba mientras mantienes el botón. `toggle` empieza con un toque y envía con el siguiente. |
 | `selection_mode` | `multiple` | Con varios altavoces: `multiple` permite cualquier combinación, `single` solo uno a la vez. |
-| `layout` | `horizontal` | `horizontal` se ve como una tarjeta tile. `vertical` pone un botón más grande sobre el texto. |
+| `tts_engine` | – | Una entidad de texto a voz, como `tts.home_assistant_cloud`. Activa los mensajes escritos y rápidos. |
+| `tts_language` | la del motor | Idioma de los mensajes escritos, como `es-ES`. |
+| `tts_voice` | la del motor | Nombre de la voz, en motores que ofrecen varias. |
+| `quick_messages` | – | Lista de frases para enviar con un toque. |
 | `active_color` | `red` | Un nombre de color de Home Assistant (como `blue` o `primary`) o un color hexadecimal. |
 | `microphone_icon` | `mdi:microphone` | Icono en reposo y mientras graba. |
 | `speaker_icon` | `mdi:volume-high` | Icono mientras envía y reproduce. |
 | `show_timer` | `true` | Muestra el tiempo de grabación y los altavoces elegidos bajo el estado. |
 | `max_duration` | `30` | La grabación se detiene sola tras estos segundos (el servidor acepta hasta 120). |
 | `min_duration` | `0.5` | Las grabaciones más cortas se descartan, así no se envían toques accidentales. |
-| `auto_play` | `true` | Reproduce el mensaje apenas termina de subirse. |
+| `auto_play` | `true` | Reproduce la grabación apenas termina de subirse. |
 | `announce` | `true` | Usa el modo anuncio en los altavoces compatibles. |
 | `playback_start_delay` | `2` | Segundos que espera la tarjeta antes de indicar que está reproduciendo. Ajústalo a lo que tardan tus altavoces en empezar. |
 
@@ -161,24 +206,37 @@ Rara vez las necesitarás. Por defecto cada grabación se convierte a MP3, que c
 
 Para HomePod prueba `input_profile: safari`, `output_profile: homepod`, `transcoding: auto`. Para Google y Nest prueba `input_profile: chrome`, `output_profile: google_home`, `transcoding: auto`.
 
-## Estilos
+## Estilos con UIX
 
-Cada parte de la tarjeta se puede cambiar con variables CSS, por ejemplo con [card-mod](https://github.com/thomasloven/lovelace-card-mod) o en un tema:
+Cada parte de la tarjeta se puede cambiar con [UIX](https://github.com/Lint-Free-Technology/uix). Los cuatro diseños comparten los mismos elementos, así que un estilo funciona con cualquier diseño. Los estilos van en `uix: style:`; `:host` es la tarjeta y `ha-card` su marco. card-mod funciona igual con `card_mod: style:`.
 
 ```yaml
-card_mod:
+type: custom:voice-announcement-card
+layout: tabs
+entity_id: media_player.kitchen
+tts_engine: tts.home_assistant_cloud
+uix:
   style: |
-    :host {
-      --voice-announcement-button-size: 96px;
-      --voice-announcement-button-color-recording: var(--green-color);
+    ha-card {
+      --voice-announcement-active-color: var(--purple-color);
+      border-radius: 24px;
+    }
+    .quick-message {
+      background: color-mix(in srgb, var(--purple-color) 14%, transparent);
+      border-color: transparent;
+    }
+    :host([state="recording"]) ha-card {
+      background: color-mix(in srgb, var(--red-color) 8%, var(--card-background-color));
     }
 ```
 
-La lista completa de variables está en el [README en inglés](README.md#styling). Sin card-mod también puedes usar `button_css`, `status_css`, `timer_css` y `text_css` (en el editor, en **Estilos personalizados**). Aceptan declaraciones CSS simples y solo se aplican propiedades visuales seguras.
+La tarjeta indica lo que está haciendo con atributos en `:host` (`state`, `layout`, `tab`, `has-tts`, `has-quick`, `has-targets`, `has-text`, `composing`), así puedes dar estilo a cada momento, por ejemplo `:host([state="playing"]) .status { color: var(--green-color); }`.
+
+La lista completa de elementos, estados y variables CSS está en el [README en inglés](README.md#styling-with-uix). Sin UIX también puedes usar `button_css`, `status_css`, `timer_css` y `text_css` (en el editor, en **Estilos personalizados**). Aceptan declaraciones CSS simples y solo se aplican propiedades visuales seguras.
 
 ## Grabaciones y acciones
 
-Las grabaciones se guardan en `/config/voice_announcement`. Se conservan las 100 más recientes durante un máximo de 7 días, y puedes verlas en **Multimedia → Voice Announcement**. Los administradores también tienen dos acciones:
+Las grabaciones se guardan en `/config/voice_announcement`. Se conservan las 100 más recientes durante un máximo de 7 días, y puedes verlas en **Multimedia → Voice Announcement**. Los mensajes escritos los maneja tu integración de texto a voz y no se guardan aquí. Los administradores también tienen dos acciones:
 
 ```yaml
 action: voice_announcement.cleanup
@@ -201,6 +259,8 @@ data:
 **"Se denegó el acceso al micrófono".** Permite el micrófono para tu dirección de Home Assistant en los ajustes del sitio del navegador, o para la app de Home Assistant en los ajustes del teléfono.
 
 **El mensaje se sube pero no suena nada.** Comprueba que el altavoz puede reproducir contenido desde Home Assistant: pruébalo desde **Multimedia** en la barra lateral. Si la tarjeta muestra un error después de "Enviando…", el altavoz rechazó el mensaje; el texto del error y el registro de Home Assistant indican el motivo.
+
+**Los mensajes escritos muestran "Invalid options".** Tu motor no acepta el `tts_voice` o `tts_language` que configuraste. Bórralos para usar los valores del motor.
 
 **La reproducción empieza tarde.** Usa `transcoding: auto` con el perfil que corresponde a tus altavoces y ajusta `playback_start_delay`. La línea del registro *Processed Voice Announcement upload* muestra cuánto tardó cada paso.
 

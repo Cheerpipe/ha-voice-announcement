@@ -41,7 +41,8 @@ const OUTPUT_PROFILES = ["default", "homepod", "google_home", "custom"];
 const TRANSCODING_MODES = ["always", "auto", "never"];
 const RECORDING_MODES = ["hold", "toggle"];
 const SELECTION_MODES = ["multiple", "single"];
-const CARD_LAYOUTS = ["horizontal", "vertical"];
+const CARD_LAYOUTS = ["horizontal", "vertical", "composer", "tabs"];
+const TEXT_LAYOUTS = ["composer", "tabs"];
 const TRANSCODE_FIELDS = {
   transcode_codec: { key: "codec", options: ["mp3", "aac"] },
   transcode_bitrate: { key: "bitrate", options: ["32k", "48k", "64k", "96k", "128k", "160k", "192k"] },
@@ -50,6 +51,8 @@ const TRANSCODE_FIELDS = {
 };
 const MEDIA_ANNOUNCE_FEATURE = 1048576;
 const MAX_TARGETS = 20;
+const MAX_MESSAGE_LENGTH = 300;
+const TTS_CHARS_PER_SECOND = 14;
 
 const AUDIO_BITS_PER_SECOND = 48000;
 const RECORDING_TIMESLICE_MS = 250;
@@ -142,6 +145,16 @@ const STRINGS = {
     "card.all": "All",
     "card.aria": "Record a voice announcement",
     "card.targets_aria": "Speakers",
+    "card.idle_message": "Send a message",
+    "card.placeholder": "Type a message",
+    "card.placeholder_hold": "Type, or hold the mic to talk",
+    "card.placeholder_toggle": "Type, or tap the mic to talk",
+    "card.speaking": "Speaking on {target}",
+    "card.send": "Send",
+    "card.write": "Type a message",
+    "card.tab_voice": "Voice",
+    "card.tab_text": "Text",
+    "card.quick_aria": "Quick messages",
     "error.unsupported": "This browser can't record audio",
     "error.insecure": "Microphone access needs HTTPS",
     "error.mic_denied": "Microphone access was denied",
@@ -156,6 +169,16 @@ const STRINGS = {
     "editor.recording": "Recording and playback",
     "editor.audio": "Audio format",
     "editor.styles": "Custom styles",
+    "editor.tts": "Text to speech",
+    "label.tts_engine": "Text-to-speech engine",
+    "label.tts_language": "Language",
+    "label.tts_voice": "Voice",
+    "label.quick_messages": "Quick messages",
+    "helper.layout": "Message box and tabs need a text-to-speech engine. Without one, the card uses the horizontal layout.",
+    "helper.tts_engine": "Lets you type messages that are read aloud on the chosen speakers.",
+    "helper.tts_language": "Leave empty to use the engine's default language.",
+    "helper.tts_voice": "Optional. The voice name exactly as your engine lists it.",
+    "helper.quick_messages": "Phrases you can send with a single tap.",
     "label.entity_id": "Speakers",
     "label.recording_mode": "Recording mode",
     "label.selection_mode": "Speaker selection",
@@ -202,10 +225,14 @@ const STRINGS = {
     "option.multiple.desc": "Pick any combination of speakers, or all of them.",
     "option.single": "One at a time",
     "option.single.desc": "Picking a speaker replaces the previous one.",
-    "option.horizontal": "Horizontal",
+    "option.horizontal": "Tile",
     "option.horizontal.desc": "Button beside the text, like a tile card.",
     "option.vertical": "Vertical",
-    "option.vertical.desc": "Button above the text.",
+    "option.vertical.desc": "Large button on top. Great for popups.",
+    "option.composer": "Message box",
+    "option.composer.desc": "Type or talk in one box, like Assist.",
+    "option.tabs": "Tabs",
+    "option.tabs.desc": "Switch between voice and text.",
     "input.default": "Automatic",
     "input.chrome": "Prefer MP4 (Chrome, Edge)",
     "input.safari": "Prefer MP4 (Safari, iOS)",
@@ -242,6 +269,16 @@ const STRINGS = {
     "card.all": "Todos",
     "card.aria": "Grabar un anuncio de voz",
     "card.targets_aria": "Altavoces",
+    "card.idle_message": "Envía un mensaje",
+    "card.placeholder": "Escribe un mensaje",
+    "card.placeholder_hold": "Escribe o mantén el micrófono",
+    "card.placeholder_toggle": "Escribe o toca el micrófono",
+    "card.speaking": "Hablando en {target}",
+    "card.send": "Enviar",
+    "card.write": "Escribir un mensaje",
+    "card.tab_voice": "Voz",
+    "card.tab_text": "Texto",
+    "card.quick_aria": "Mensajes rápidos",
     "error.unsupported": "Este navegador no puede grabar audio",
     "error.insecure": "El micrófono requiere HTTPS",
     "error.mic_denied": "Se denegó el acceso al micrófono",
@@ -256,6 +293,16 @@ const STRINGS = {
     "editor.recording": "Grabación y reproducción",
     "editor.audio": "Formato de audio",
     "editor.styles": "Estilos personalizados",
+    "editor.tts": "Texto a voz",
+    "label.tts_engine": "Motor de texto a voz",
+    "label.tts_language": "Idioma",
+    "label.tts_voice": "Voz",
+    "label.quick_messages": "Mensajes rápidos",
+    "helper.layout": "El cuadro de mensaje y las pestañas necesitan un motor de texto a voz. Sin él, la tarjeta usa el diseño horizontal.",
+    "helper.tts_engine": "Permite escribir mensajes que se leen en voz alta en los altavoces elegidos.",
+    "helper.tts_language": "Déjalo vacío para usar el idioma por defecto del motor.",
+    "helper.tts_voice": "Opcional. El nombre de la voz tal como lo muestra tu motor.",
+    "helper.quick_messages": "Frases que puedes enviar con un solo toque.",
     "label.entity_id": "Altavoces",
     "label.recording_mode": "Modo de grabación",
     "label.selection_mode": "Selección de altavoces",
@@ -302,10 +349,14 @@ const STRINGS = {
     "option.multiple.desc": "Elige cualquier combinación de altavoces, o todos.",
     "option.single": "Uno a la vez",
     "option.single.desc": "Al elegir un altavoz se reemplaza el anterior.",
-    "option.horizontal": "Horizontal",
+    "option.horizontal": "Tile",
     "option.horizontal.desc": "Botón junto al texto, como una tarjeta tile.",
     "option.vertical": "Vertical",
-    "option.vertical.desc": "Botón sobre el texto.",
+    "option.vertical.desc": "Botón grande arriba. Ideal para popups.",
+    "option.composer": "Mensaje",
+    "option.composer.desc": "Escribe o habla en un mismo cuadro, como Assist.",
+    "option.tabs": "Pestañas",
+    "option.tabs.desc": "Cambia entre voz y texto.",
     "input.default": "Automático",
     "input.chrome": "Preferir MP4 (Chrome, Edge)",
     "input.safari": "Preferir MP4 (Safari, iOS)",
@@ -624,6 +675,450 @@ const BUTTON_STYLES = `
   }
 `;
 
+const CARD_CSS = `
+  :host {
+    display: block;
+    height: 100%;
+  }
+
+  :host([auto-height]),
+  :host([auto-height]) ha-card,
+  :host([auto-height]) .container {
+    height: auto;
+  }
+
+  ha-card {
+    box-sizing: border-box;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .container {
+    align-items: center;
+    box-sizing: border-box;
+    column-gap: var(--voice-announcement-card-gap, 10px);
+    display: grid;
+    height: 100%;
+    padding: var(--voice-announcement-card-padding, 10px);
+  }
+
+  .container > * {
+    min-width: 0;
+  }
+
+  .tabs,
+  .compose-toggle,
+  .targets,
+  .quick,
+  .composer {
+    display: none;
+  }
+
+  .targets,
+  .quick,
+  .composer {
+    margin-top: var(--voice-announcement-section-gap, 10px);
+  }
+
+  .layout-horizontal {
+    grid-template-areas:
+      "button text toggle"
+      "targets targets targets"
+      "quick quick quick"
+      "composer composer composer";
+    grid-template-columns: var(--voice-announcement-button-size-horizontal, 36px) minmax(0, 1fr) auto;
+    min-height: var(--voice-announcement-tile-min-height, 56px);
+  }
+
+  .layout-vertical {
+    grid-template-areas: "button" "text" "targets" "quick" "composer";
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    justify-items: center;
+    text-align: center;
+  }
+
+  .layout-composer {
+    grid-template-areas: "text text" "targets targets" "composer button" "quick quick";
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .layout-tabs {
+    grid-template-areas: "tabs tabs" "targets targets" "button text" "composer composer" "quick quick";
+    grid-template-columns: var(--voice-announcement-button-size-horizontal, 36px) minmax(0, 1fr);
+  }
+
+  .button-frame {
+    display: grid;
+    grid-area: button;
+    min-height: 0;
+    place-items: center;
+  }
+
+  .layout-composer .button-frame,
+  .layout-tabs .button-frame,
+  .layout-tabs .text-zone {
+    margin-top: var(--voice-announcement-section-gap, 10px);
+  }
+
+  .layout-vertical .button-frame {
+    container-type: size;
+    height: 100%;
+    min-height: var(--voice-announcement-button-size, 72px);
+    width: 100%;
+  }
+
+  :host([auto-height]) .layout-vertical .button-frame {
+    container-type: normal;
+    height: auto;
+  }
+
+  .record-button {
+    width: var(--voice-announcement-button-size-horizontal, 36px);
+  }
+
+  .layout-composer .record-button {
+    width: var(--voice-announcement-button-size-composer, 40px);
+  }
+
+  .layout-vertical .record-button {
+    width: min(var(--voice-announcement-button-size, 80cqh), 100cqw, 100cqh);
+  }
+
+  :host([auto-height]) .layout-vertical .record-button {
+    width: var(--voice-announcement-button-size, 72px);
+  }
+
+  .record-button ha-icon {
+    --mdc-icon-size: var(--voice-announcement-button-icon-size-horizontal, 24px);
+  }
+
+  .layout-vertical .record-button ha-icon {
+    --mdc-icon-size: var(--voice-announcement-button-icon-size, 34cqmin);
+  }
+
+  :host([auto-height]) .layout-vertical .record-button ha-icon {
+    --mdc-icon-size: var(--voice-announcement-button-icon-size, 32px);
+  }
+
+  ${BUTTON_STYLES}
+
+  .text-zone {
+    display: var(--voice-announcement-text-display, grid);
+    gap: var(--voice-announcement-text-gap, 0);
+    grid-area: text;
+  }
+
+  .layout-vertical .text-zone {
+    margin-top: 6px;
+  }
+
+  .status {
+    color: var(--voice-announcement-label-color, var(--primary-text-color));
+    font-size: var(--voice-announcement-label-font-size, var(--ha-font-size-m, 14px));
+    font-weight: var(--voice-announcement-label-font-weight, var(--ha-font-weight-medium, 500));
+    letter-spacing: 0.1px;
+    line-height: var(--ha-line-height-condensed, 20px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .timer {
+    color: var(--voice-announcement-timer-color, var(--secondary-text-color));
+    display: var(--voice-announcement-timer-display, block);
+    font-size: var(--voice-announcement-timer-font-size, var(--ha-font-size-s, 12px));
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.4px;
+    line-height: var(--ha-line-height-condensed, 16px);
+    min-height: 16px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    visibility: var(--voice-announcement-timer-visibility, visible);
+    white-space: nowrap;
+  }
+
+  :host([hide-timer]) .timer {
+    display: none;
+  }
+
+  .icon-button {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: 50%;
+    color: var(--secondary-text-color);
+    cursor: pointer;
+    height: 40px;
+    justify-content: center;
+    padding: 0;
+    width: 40px;
+    --mdc-icon-size: 22px;
+  }
+
+  .icon-button:hover {
+    background: color-mix(in srgb, var(--primary-text-color) 6%, transparent);
+  }
+
+  .icon-button:focus-visible,
+  .target:focus-visible,
+  .quick-message:focus-visible,
+  .tab:focus-visible,
+  .send-button:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 1px;
+  }
+
+  :host([has-tts]) .layout-horizontal .compose-toggle {
+    align-items: center;
+    display: inline-flex;
+    grid-area: toggle;
+  }
+
+  .targets {
+    flex-wrap: wrap;
+    gap: 8px;
+    grid-area: targets;
+    justify-content: var(--voice-announcement-targets-justify, flex-start);
+  }
+
+  :host([has-targets]) .targets {
+    display: flex;
+  }
+
+  .layout-vertical .targets,
+  .layout-vertical .quick {
+    justify-content: var(--voice-announcement-targets-justify, center);
+  }
+
+  .layout-vertical .composer {
+    justify-self: stretch;
+  }
+
+  .target,
+  .quick-message {
+    align-items: center;
+    background: transparent;
+    border: 1px solid var(--outline-color, var(--divider-color));
+    box-sizing: border-box;
+    color: var(--primary-text-color);
+    cursor: pointer;
+    display: inline-flex;
+    font: inherit;
+    font-size: var(--ha-font-size-s, 13px);
+    font-weight: var(--ha-font-weight-medium, 500);
+    gap: 6px;
+    height: 32px;
+    max-width: 100%;
+    padding: 0 12px;
+    transition: background-color 140ms ease, border-color 140ms ease;
+  }
+
+  .target {
+    border-radius: var(--voice-announcement-chip-border-radius, 8px);
+  }
+
+  .target span,
+  .quick-message span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .target ha-icon {
+    --mdc-icon-size: 18px;
+    display: none;
+    margin-inline-start: -4px;
+  }
+
+  .target[aria-pressed="true"] {
+    background: color-mix(in srgb, var(--primary-color) 18%, transparent);
+    border-color: transparent;
+  }
+
+  .target[aria-pressed="true"] ha-icon {
+    display: inline-flex;
+  }
+
+  .quick {
+    flex-wrap: wrap;
+    gap: 8px;
+    grid-area: quick;
+    justify-content: var(--voice-announcement-quick-justify, flex-start);
+  }
+
+  :host([has-quick]) .quick {
+    display: flex;
+  }
+
+  .quick-message {
+    background: var(--voice-announcement-quick-background, transparent);
+    border-radius: var(--voice-announcement-quick-border-radius, 16px);
+  }
+
+  .quick-message:hover,
+  .target:hover {
+    background-color: color-mix(in srgb, var(--primary-text-color) 6%, transparent);
+  }
+
+  .target:disabled,
+  .quick-message:disabled,
+  .send-button:disabled,
+  .tab:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .composer {
+    align-items: center;
+    gap: 8px;
+    grid-area: composer;
+    margin-bottom: 0;
+  }
+
+  :host([has-tts]) .composer {
+    display: flex;
+  }
+
+  :host([has-tts]:not([composing])) .layout-horizontal .composer,
+  :host([tab="voice"]) .layout-tabs :is(.composer, .quick),
+  :host([tab="text"]) .layout-tabs .button-frame,
+  :host([has-text]) .layout-composer .button-frame,
+  :host(:not([has-text])) .layout-composer .send-button {
+    display: none;
+  }
+
+  :host([tab="text"]) .layout-tabs .text-zone,
+  :host([has-text]) .layout-composer .composer {
+    grid-column: 1 / -1;
+  }
+
+  .message {
+    background: var(--voice-announcement-input-background, var(--secondary-background-color));
+    border: var(--voice-announcement-input-border, 0);
+    border-radius: var(--voice-announcement-input-border-radius, 20px);
+    box-sizing: border-box;
+    color: var(--primary-text-color);
+    flex: 1;
+    font: inherit;
+    font-size: var(--ha-font-size-m, 14px);
+    height: 40px;
+    min-width: 0;
+    outline: none;
+    padding: 0 16px;
+  }
+
+  .message:focus-visible {
+    box-shadow: 0 0 0 2px var(--primary-color);
+  }
+
+  .message::placeholder {
+    color: var(--secondary-text-color);
+  }
+
+  .send-button {
+    align-items: center;
+    background: var(--voice-announcement-send-color, var(--primary-color));
+    border: 0;
+    border-radius: 50%;
+    color: var(--voice-announcement-send-icon-color, var(--text-primary-color, #fff));
+    cursor: pointer;
+    display: inline-flex;
+    flex: none;
+    height: 40px;
+    justify-content: center;
+    padding: 0;
+    width: 40px;
+    --mdc-icon-size: 20px;
+  }
+
+  .tabs {
+    background: var(--voice-announcement-tabs-background, var(--secondary-background-color));
+    border-radius: var(--voice-announcement-tabs-border-radius, 12px);
+    gap: 4px;
+    grid-area: tabs;
+    padding: 4px;
+  }
+
+  :host([has-tts]) .layout-tabs .tabs {
+    display: flex;
+  }
+
+  .tab {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: 8px;
+    color: var(--secondary-text-color);
+    cursor: pointer;
+    display: inline-flex;
+    flex: 1;
+    font: inherit;
+    font-size: var(--ha-font-size-s, 13px);
+    font-weight: var(--ha-font-weight-medium, 500);
+    gap: 6px;
+    height: 32px;
+    justify-content: center;
+    --mdc-icon-size: 18px;
+  }
+
+  .tab[aria-selected="true"] {
+    background: var(--voice-announcement-tab-selected-background, var(--card-background-color, #fff));
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.16);
+    color: var(--primary-text-color);
+  }
+`;
+
+const BADGE_CSS = `
+  :host {
+    display: inline-flex;
+    vertical-align: middle;
+    --voice-announcement-button-color: var(
+      --voice-announcement-badge-color,
+      var(--ha-card-background, var(--card-background-color, #fff))
+    );
+    --voice-announcement-button-color-recording: var(
+      --voice-announcement-badge-color-recording,
+      var(--voice-announcement-active-color)
+    );
+    --voice-announcement-button-icon-color: var(
+      --voice-announcement-badge-icon-color,
+      var(--voice-announcement-active-color)
+    );
+    --voice-announcement-pulse-size: 10px;
+  }
+
+  ${BUTTON_STYLES}
+
+  .record-button {
+    border: var(
+      --voice-announcement-badge-border,
+      var(--ha-card-border-width, 1px) solid var(--ha-card-border-color, var(--divider-color, #e0e0e0))
+    );
+    border-radius: var(--voice-announcement-badge-border-radius, var(--ha-badge-border-radius, 18px));
+    box-shadow: var(--voice-announcement-badge-shadow, var(--ha-card-box-shadow, none));
+    box-sizing: border-box;
+    width: var(--voice-announcement-badge-size, var(--ha-badge-size, 36px));
+  }
+
+  .record-button ha-icon {
+    --mdc-icon-size: var(--voice-announcement-badge-icon-size, var(--ha-badge-icon-size, 18px));
+  }
+`;
+
+const STYLE_SHEETS = new Map();
+
+function adoptStyles(root, css) {
+  // Constructable sheets keep ha-card as the only child of the shadow root, the
+  // structure UIX and card-mod expect, and are shared between all instances.
+  if (!STYLE_SHEETS.has(css)) {
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync(css);
+    STYLE_SHEETS.set(css, sheet);
+  }
+  root.adoptedStyleSheets = [STYLE_SHEETS.get(css)];
+}
+
 class VoiceAnnouncementCard extends HTMLElement {
   static async getConfigElement() {
     await customElements.whenDefined(EDITOR_TAG);
@@ -648,6 +1143,8 @@ class VoiceAnnouncementCard extends HTMLElement {
     this._status = "";
     this._timerText = "00:00";
     this._targetsSignature = "";
+    this._labelsLanguage = undefined;
+    this._tab = "voice";
     this._chunks = [];
     this._recorder = undefined;
     this._stream = undefined;
@@ -689,11 +1186,12 @@ class VoiceAnnouncementCard extends HTMLElement {
   }
 
   getCardSize() {
-    return (this._getLayout() === "vertical" ? 2 : 1) + (this._hasPicker() ? 1 : 0);
+    const base = this._getLayout() === "vertical" ? 2 : 1;
+    return base + Number(this._hasPicker()) + Number(this._hasTts()) + Number(this._quickMessages().length > 0);
   }
 
   getGridOptions() {
-    if (this._hasPicker()) {
+    if (this._isAutoHeight()) {
       return { columns: 12, rows: "auto", min_columns: 6 };
     }
     const isVertical = this._getLayout() === "vertical";
@@ -721,11 +1219,27 @@ class VoiceAnnouncementCard extends HTMLElement {
   }
 
   _getLayout() {
-    return this._config?.layout === "vertical" ? "vertical" : "horizontal";
+    const layout = CARD_LAYOUTS.includes(this._config?.layout) ? this._config.layout : "horizontal";
+    // The message box and tabs layouts need text-to-speech; without it they fall back to a tile.
+    return TEXT_LAYOUTS.includes(layout) && !this._hasTts() ? "horizontal" : layout;
   }
 
   _hasPicker() {
     return this._targets.length > 1;
+  }
+
+  _hasTts() {
+    return Boolean(this._config?.tts_engine);
+  }
+
+  _quickMessages() {
+    return this._hasTts() && Array.isArray(this._config.quick_messages)
+      ? this._config.quick_messages.map((item) => String(item).trim()).filter(Boolean)
+      : [];
+  }
+
+  _isAutoHeight() {
+    return this._hasPicker() || this._hasTts();
   }
 
   _isSingleSelect() {
@@ -789,7 +1303,16 @@ class VoiceAnnouncementCard extends HTMLElement {
     if (config.transcode_target !== undefined && !isPlainObject(config.transcode_target)) {
       throw new Error("transcode_target must be an object");
     }
-    for (const key of ["button_css", "status_css", "timer_css", "text_css"]) {
+    if (
+      config.tts_engine !== undefined &&
+      (typeof config.tts_engine !== "string" || !config.tts_engine.startsWith("tts."))
+    ) {
+      throw new Error("tts_engine must be a tts entity, for example tts.home_assistant_cloud");
+    }
+    if (config.quick_messages !== undefined && !isStringArray(config.quick_messages)) {
+      throw new Error("quick_messages must be a list of texts");
+    }
+    for (const key of ["button_css", "status_css", "timer_css", "text_css", "tts_language", "tts_voice"]) {
       if (config[key] !== undefined && typeof config[key] !== "string") {
         throw new Error(`${key} must be a string`);
       }
@@ -797,220 +1320,83 @@ class VoiceAnnouncementCard extends HTMLElement {
   }
 
   _render() {
+    if (!this._card) {
+      adoptStyles(this.shadowRoot, CARD_CSS);
+      this._card = document.createElement("ha-card");
+      this.shadowRoot.append(this._card);
+    }
     const layout = this._getLayout();
-    this.toggleAttribute("has-targets", this._hasPicker());
-    this.shadowRoot.innerHTML = `
-      <style>
-        :host {
-          display: block;
-          height: 100%;
-        }
-
-        ha-card {
-          box-sizing: border-box;
-          height: 100%;
-          overflow: hidden;
-        }
-
-        .container {
-          align-items: center;
-          box-sizing: border-box;
-          display: grid;
-          height: 100%;
-          min-width: 0;
-        }
-
-        .layout-horizontal {
-          gap: var(--voice-announcement-card-gap-horizontal, 10px);
-          grid-template-columns:
-            var(--voice-announcement-button-size-horizontal, 36px)
-            minmax(0, 1fr);
-          min-height: var(--voice-announcement-tile-min-height, 56px);
-          padding: var(--voice-announcement-card-padding-horizontal, 10px);
-        }
-
-        .layout-vertical {
-          gap: var(--voice-announcement-card-gap, 6px);
-          grid-template-rows: minmax(0, 1fr) min-content;
-          justify-items: center;
-          padding: var(--voice-announcement-card-padding, 10px);
-          text-align: center;
-        }
-
-        :host([has-targets]) .container {
-          height: auto;
-        }
-
-        :host([has-targets]) .layout-vertical {
-          grid-template-rows: auto auto;
-        }
-
-        .button-frame {
-          display: grid;
-          min-height: 0;
-          min-width: 0;
-          place-items: center;
-        }
-
-        .layout-vertical .button-frame {
-          container-type: size;
-          height: 100%;
-          min-height: var(--voice-announcement-button-size, 72px);
-          width: 100%;
-        }
-
-        :host([has-targets]) .layout-vertical .button-frame {
-          container-type: normal;
-          height: auto;
-        }
-
-        .record-button {
-          width: var(--voice-announcement-button-size-horizontal, 36px);
-        }
-
-        .layout-vertical .record-button {
-          width: min(var(--voice-announcement-button-size, 80cqh), 100cqw, 100cqh);
-        }
-
-        :host([has-targets]) .layout-vertical .record-button {
-          width: var(--voice-announcement-button-size, 72px);
-        }
-
-        .record-button ha-icon {
-          --mdc-icon-size: var(--voice-announcement-button-icon-size-horizontal, 24px);
-        }
-
-        .layout-vertical .record-button ha-icon {
-          --mdc-icon-size: var(--voice-announcement-button-icon-size, 34cqmin);
-        }
-
-        :host([has-targets]) .layout-vertical .record-button ha-icon {
-          --mdc-icon-size: var(--voice-announcement-button-icon-size, 32px);
-        }
-
-        ${BUTTON_STYLES}
-
-        .text-zone {
-          display: var(--voice-announcement-text-display, grid);
-          gap: var(--voice-announcement-text-gap, 0);
-          min-width: 0;
-        }
-
-        .status {
-          color: var(--voice-announcement-label-color, var(--primary-text-color));
-          font-size: var(--voice-announcement-label-font-size, var(--ha-font-size-m, 14px));
-          font-weight: var(--voice-announcement-label-font-weight, var(--ha-font-weight-medium, 500));
-          letter-spacing: 0.1px;
-          line-height: var(--ha-line-height-condensed, 20px);
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        .timer {
-          color: var(--voice-announcement-timer-color, var(--secondary-text-color));
-          display: var(--voice-announcement-timer-display, block);
-          font-size: var(--voice-announcement-timer-font-size, var(--ha-font-size-s, 12px));
-          font-variant-numeric: tabular-nums;
-          letter-spacing: 0.4px;
-          line-height: var(--ha-line-height-condensed, 16px);
-          min-height: 16px;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          visibility: var(--voice-announcement-timer-visibility, visible);
-          white-space: nowrap;
-        }
-
-        :host([hide-timer]) .timer {
-          display: none;
-        }
-
-        .targets {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
-          grid-column: 1 / -1;
-          justify-content: var(--voice-announcement-targets-justify, flex-start);
-        }
-
-        .layout-vertical .targets {
-          justify-content: var(--voice-announcement-targets-justify, center);
-        }
-
-        .target {
-          align-items: center;
-          background: transparent;
-          border: 1px solid var(--outline-color, var(--divider-color));
-          border-radius: var(--voice-announcement-chip-border-radius, 8px);
-          box-sizing: border-box;
-          color: var(--primary-text-color);
-          cursor: pointer;
-          display: inline-flex;
-          font: inherit;
-          font-size: var(--ha-font-size-s, 13px);
-          font-weight: var(--ha-font-weight-medium, 500);
-          gap: 6px;
-          height: 32px;
-          max-width: 100%;
-          padding: 0 12px;
-          transition: background-color 140ms ease, border-color 140ms ease;
-        }
-
-        .target span {
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        .target ha-icon {
-          --mdc-icon-size: 18px;
-          display: none;
-          margin-inline-start: -4px;
-        }
-
-        .target[aria-pressed="true"] {
-          background: color-mix(in srgb, var(--primary-color) 18%, transparent);
-          border-color: transparent;
-        }
-
-        .target[aria-pressed="true"] ha-icon {
-          display: inline-flex;
-        }
-
-        .target:focus-visible {
-          outline: 2px solid var(--primary-color);
-          outline-offset: 1px;
-        }
-
-        .target:disabled {
-          cursor: not-allowed;
-          opacity: 0.5;
-        }
-      </style>
-      <ha-card>
-        <div class="container layout-${layout}" part="container">
-          <div class="button-frame">
-            <button class="record-button" part="button" type="button" aria-pressed="false">
-              <span class="center-pulse" part="center-pulse" aria-hidden="true"></span>
-              <ha-icon part="button-icon" icon="${DEFAULT_CONFIG.microphone_icon}"></ha-icon>
-            </button>
-          </div>
-          <div class="text-zone" part="text">
-            <div class="status" part="status" role="status"></div>
-            <div class="timer" part="timer"></div>
-          </div>
-          ${this._hasPicker() ? `<div class="targets" part="targets" role="group"></div>` : ""}
-        </div>
-      </ha-card>
+    const container = document.createElement("div");
+    container.className = `container layout-${layout}`;
+    container.setAttribute("part", "container");
+    container.innerHTML = `
+      <div class="tabs" part="tabs" role="tablist">
+        <button class="tab" part="tab tab-voice" type="button" role="tab" data-tab="voice">
+          <ha-icon icon="mdi:microphone"></ha-icon><span></span>
+        </button>
+        <button class="tab" part="tab tab-text" type="button" role="tab" data-tab="text">
+          <ha-icon icon="mdi:message-text-outline"></ha-icon><span></span>
+        </button>
+      </div>
+      <div class="button-frame" part="button-frame">
+        <button class="record-button" part="button" type="button" aria-pressed="false">
+          <span class="center-pulse" part="center-pulse" aria-hidden="true"></span>
+          <ha-icon part="button-icon" icon="${DEFAULT_CONFIG.microphone_icon}"></ha-icon>
+        </button>
+      </div>
+      <div class="text-zone" part="text">
+        <div class="status" part="status" role="status"></div>
+        <div class="timer" part="timer"></div>
+      </div>
+      <button class="compose-toggle icon-button" part="compose-toggle" type="button" aria-expanded="false">
+        <ha-icon icon="mdi:keyboard-outline"></ha-icon>
+      </button>
+      <div class="targets" part="targets" role="group"></div>
+      <div class="quick" part="quick" role="group">
+        ${this._quickMessages()
+          .map(
+            (message) => `
+              <button class="quick-message" part="quick-message" type="button" data-message="${escapeHtml(message)}">
+                <span>${escapeHtml(message)}</span>
+              </button>`
+          )
+          .join("")}
+      </div>
+      <form class="composer" part="composer">
+        <input class="message" part="input" type="text" maxlength="${MAX_MESSAGE_LENGTH}"
+          enterkeyhint="send" autocomplete="off" />
+        <button class="send-button" part="send" type="submit"><ha-icon icon="mdi:send"></ha-icon></button>
+      </form>
     `;
+    // Only the container is swapped, so nodes UIX or card-mod injected next to it survive updates.
+    if (this._container) {
+      this._container.replaceWith(container);
+    } else {
+      this._card.append(container);
+    }
+    this._container = container;
 
-    this._button = this.shadowRoot.querySelector(".record-button");
-    this._iconElement = this.shadowRoot.querySelector('[part="button-icon"]');
-    this._textElement = this.shadowRoot.querySelector(".text-zone");
-    this._statusElement = this.shadowRoot.querySelector(".status");
-    this._timerElement = this.shadowRoot.querySelector(".timer");
-    this._targetsElement = this.shadowRoot.querySelector(".targets");
+    const query = (selector) => container.querySelector(selector);
+    this._button = query(".record-button");
+    this._iconElement = query('[part="button-icon"]');
+    this._textElement = query(".text-zone");
+    this._statusElement = query(".status");
+    this._timerElement = query(".timer");
+    this._targetsElement = this._hasPicker() ? query(".targets") : undefined;
+    this._messageInput = query(".message");
+    this._sendButton = query(".send-button");
+    this._composeToggle = query(".compose-toggle");
     this._targetsSignature = "";
+    this._labelsLanguage = undefined;
+
+    this.setAttribute("layout", layout);
+    this.setAttribute("tab", this._tab);
+    this.toggleAttribute("auto-height", this._isAutoHeight());
+    this.toggleAttribute("has-targets", this._hasPicker());
+    this.toggleAttribute("has-tts", this._hasTts());
+    this.toggleAttribute("has-quick", this._quickMessages().length > 0);
+    this.toggleAttribute("has-text", false);
+    this.toggleAttribute("composing", false);
     this._applyStyles();
     this._attachHandlers();
     this._updateUi();
@@ -1031,6 +1417,45 @@ class VoiceAnnouncementCard extends HTMLElement {
       if (chip && !chip.disabled) {
         this._toggleTarget(chip.dataset.target);
       }
+    });
+    if (!this._container) {
+      return;
+    }
+    this._container.querySelector(".quick").addEventListener("click", (event) => {
+      const chip = event.target.closest("[data-message]");
+      if (chip && !chip.disabled) {
+        this._sendText(chip.dataset.message);
+      }
+    });
+    this._container.querySelector(".tabs").addEventListener("click", (event) => {
+      const tab = event.target.closest("[data-tab]");
+      if (tab && !tab.disabled) {
+        this._tab = tab.dataset.tab;
+        this.setAttribute("tab", this._tab);
+        this._updateUi();
+        if (this._tab === "text") {
+          this._messageInput.focus();
+        }
+      }
+    });
+    this._composeToggle.addEventListener("click", () => {
+      const composing = !this.hasAttribute("composing");
+      this.toggleAttribute("composing", composing);
+      this._updateUi();
+      if (composing) {
+        this._messageInput.focus();
+      }
+    });
+    this._messageInput.addEventListener("input", () => this._updateUi());
+    this._container.querySelector(".composer").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const message = this._messageInput.value;
+      if (this._sendButton.disabled || !message.trim()) {
+        return;
+      }
+      this._messageInput.value = "";
+      this._sendText(message);
+      this._messageInput.focus();
     });
   }
 
@@ -1229,7 +1654,7 @@ class VoiceAnnouncementCard extends HTMLElement {
         const result = await this._uploadRecording(blob, duration, targets);
         if (this._config.auto_play !== false) {
           this._setState("playing", "card.starting_playback");
-          const playPromise = this._playRecording(result, targets);
+          const playPromise = this._playMedia(result.media_source_id, result.media_content_type, targets);
           await this._awaitLikelyPlaybackStart(playPromise);
           const playbackStartedAt = performance.now();
           this._setState("playing", "card.playing");
@@ -1471,7 +1896,7 @@ class VoiceAnnouncementCard extends HTMLElement {
     return withTimeout(response.json(), RESPONSE_BODY_TIMEOUT_MS, "Upload response");
   }
 
-  async _playRecording(result, targets) {
+  async _playMedia(mediaContentId, mediaContentType, targets) {
     if (typeof this._hass?.callService !== "function") {
       throw new Error(this._t("error.no_api"));
     }
@@ -1482,12 +1907,44 @@ class VoiceAnnouncementCard extends HTMLElement {
         const announce = this._config.announce !== false && (features & MEDIA_ANNOUNCE_FEATURE) !== 0;
         return this._hass.callService("media_player", "play_media", {
           entity_id: entityId,
-          media_content_id: result.media_source_id,
-          media_content_type: result.media_content_type || "music",
+          media_content_id: mediaContentId,
+          media_content_type: mediaContentType || "music",
           ...(announce ? { announce: true } : {}),
         });
       })
     );
+  }
+
+  _ttsMediaId(message) {
+    const params = [
+      ["message", message],
+      ["cache", "true"],
+      ...(this._config.tts_language ? [["language", this._config.tts_language]] : []),
+      ...(this._config.tts_voice ? [["tts_options", JSON.stringify({ voice: this._config.tts_voice })]] : []),
+    ];
+    const query = params.map(([key, value]) => `${key}=${encodeURIComponent(value)}`).join("&");
+    return `media-source://tts/${this._config.tts_engine}?${query}`;
+  }
+
+  async _sendText(text) {
+    const message = String(text || "").trim().slice(0, MAX_MESSAGE_LENGTH);
+    const targets = this._activeTargets();
+    if (!message || !targets.length || !this._hasTts() || !this._isIdle()) {
+      return;
+    }
+    window.clearTimeout(this._errorTimer);
+    try {
+      this._setState("playing", "card.starting_playback");
+      const playPromise = this._playMedia(this._ttsMediaId(message), "music", targets);
+      await this._awaitLikelyPlaybackStart(playPromise);
+      const playbackStartedAt = performance.now();
+      this._setState("playing", "card.speaking");
+      await playPromise;
+      await this._holdPlaybackStatus(message.length / TTS_CHARS_PER_SECOND, playbackStartedAt);
+      this._setState("idle");
+    } catch (err) {
+      this._setError(this._formatError(err, "error.send"));
+    }
   }
 
   _extensionForMime(mimeType) {
@@ -1587,11 +2044,44 @@ class VoiceAnnouncementCard extends HTMLElement {
     return err?.message || this._t(fallbackKey);
   }
 
+  _isIdle() {
+    return ["idle", "error", "done"].includes(this._state);
+  }
+
+  _isTextMode() {
+    const layout = this._getLayout();
+    return layout === "composer" || (layout === "tabs" && this._tab === "text");
+  }
+
   _idleStatus() {
     if (!this._activeTargets().length) {
       return this._t("card.choose_target");
     }
+    if (this._isTextMode()) {
+      return this._t("card.idle_message");
+    }
     return this._t(this._isHoldMode() ? "card.hold" : "card.toggle");
+  }
+
+  _updateLabels() {
+    const language = this._hass?.locale?.language;
+    if (!this._messageInput || this._labelsLanguage === language) {
+      return;
+    }
+    this._labelsLanguage = language;
+    const placeholderKey =
+      this._getLayout() === "composer"
+        ? this._isHoldMode()
+          ? "card.placeholder_hold"
+          : "card.placeholder_toggle"
+        : "card.placeholder";
+    this._messageInput.placeholder = this._t(placeholderKey);
+    this._messageInput.setAttribute("aria-label", this._t("card.placeholder"));
+    this._sendButton.setAttribute("aria-label", this._t("card.send"));
+    this._sendButton.title = this._t("card.send");
+    this._container.querySelector('[data-tab="voice"] span').textContent = this._t("card.tab_voice");
+    this._container.querySelector('[data-tab="text"] span').textContent = this._t("card.tab_text");
+    this._container.querySelector(".quick").setAttribute("aria-label", this._t("card.quick_aria"));
   }
 
   _updateUi() {
@@ -1619,7 +2109,35 @@ class VoiceAnnouncementCard extends HTMLElement {
     this._statusElement.textContent = status;
     this._timerElement.textContent = showsTimer ? this._timerText : this._targetLabel();
     this.toggleAttribute("hide-timer", this._config.show_timer === false);
+    this.setAttribute("state", this._state);
     this._updateTargets(isIdle);
+    this._updateComposer(isIdle);
+  }
+
+  _updateComposer(isIdle) {
+    if (!this._messageInput) {
+      return;
+    }
+    this._updateLabels();
+    const canSend = this._hasTts() && isIdle && Boolean(this._hass) && this._activeTargets().length > 0;
+    const hasText = this._messageInput.value.trim().length > 0;
+    this.toggleAttribute("has-text", hasText);
+    this._sendButton.disabled = !canSend || !hasText;
+    this._container.querySelectorAll(".quick-message").forEach((chip) => {
+      chip.disabled = !canSend;
+    });
+    this._container.querySelectorAll("[data-tab]").forEach((tab) => {
+      tab.setAttribute("aria-selected", String(tab.dataset.tab === this._tab));
+      tab.disabled = !isIdle;
+    });
+    const composing = this.hasAttribute("composing");
+    this._composeToggle.setAttribute("aria-expanded", String(composing));
+    this._composeToggle.setAttribute("aria-label", this._t("card.write"));
+    this._composeToggle.title = this._t("card.write");
+    this._composeToggle.querySelector("ha-icon").setAttribute(
+      "icon",
+      composing ? "mdi:keyboard-off-outline" : "mdi:keyboard-outline"
+    );
   }
 
   _updateTargets(enabled) {
@@ -1694,60 +2212,28 @@ class VoiceAnnouncementBadge extends VoiceAnnouncementCard {
     return false;
   }
 
+  _hasTts() {
+    return false;
+  }
+
   _render() {
-    this.shadowRoot.innerHTML = `
-      <style>
-        :host {
-          display: inline-flex;
-          vertical-align: middle;
-          --voice-announcement-button-color: var(
-            --voice-announcement-badge-color,
-            var(--ha-card-background, var(--card-background-color, #fff))
-          );
-          --voice-announcement-button-color-recording: var(
-            --voice-announcement-badge-color-recording,
-            var(--voice-announcement-active-color)
-          );
-          --voice-announcement-button-icon-color: var(
-            --voice-announcement-badge-icon-color,
-            var(--voice-announcement-active-color)
-          );
-          --voice-announcement-pulse-size: 10px;
-        }
-
-        ${BUTTON_STYLES}
-
-        .record-button {
-          border: var(
-            --voice-announcement-badge-border,
-            var(--ha-card-border-width, 1px) solid var(--ha-card-border-color, var(--divider-color, #e0e0e0))
-          );
-          border-radius: var(--voice-announcement-badge-border-radius, var(--ha-badge-border-radius, 18px));
-          box-shadow: var(--voice-announcement-badge-shadow, var(--ha-card-box-shadow, none));
-          box-sizing: border-box;
-          width: var(--voice-announcement-badge-size, var(--ha-badge-size, 36px));
-        }
-
-        .record-button ha-icon {
-          --mdc-icon-size: var(--voice-announcement-badge-icon-size, var(--ha-badge-icon-size, 18px));
-        }
-      </style>
-      <button class="record-button" part="badge button" type="button" aria-pressed="false">
-        <span class="center-pulse" part="center-pulse" aria-hidden="true"></span>
-        <ha-icon part="badge-icon button-icon" icon="${DEFAULT_CONFIG.microphone_icon}"></ha-icon>
-      </button>
-      <span hidden part="status"></span>
-      <span hidden part="timer"></span>
-    `;
-
-    this._button = this.shadowRoot.querySelector(".record-button");
-    this._iconElement = this.shadowRoot.querySelector("ha-icon");
-    this._statusElement = this.shadowRoot.querySelector('[part="status"]');
-    this._timerElement = this.shadowRoot.querySelector('[part="timer"]');
-    this._textElement = undefined;
-    this._targetsElement = undefined;
+    if (!this._button) {
+      adoptStyles(this.shadowRoot, BADGE_CSS);
+      this.shadowRoot.innerHTML = `
+        <button class="record-button" part="badge button" type="button" aria-pressed="false">
+          <span class="center-pulse" part="center-pulse" aria-hidden="true"></span>
+          <ha-icon part="badge-icon button-icon" icon="${DEFAULT_CONFIG.microphone_icon}"></ha-icon>
+        </button>
+        <span hidden part="status"></span>
+        <span hidden part="timer"></span>
+      `;
+      this._button = this.shadowRoot.querySelector(".record-button");
+      this._iconElement = this.shadowRoot.querySelector("ha-icon");
+      this._statusElement = this.shadowRoot.querySelector('[part="status"]');
+      this._timerElement = this.shadowRoot.querySelector('[part="timer"]');
+      this._attachHandlers();
+    }
     this._applyStyles();
-    this._attachHandlers();
     this._updateUi();
   }
 
@@ -1865,6 +2351,12 @@ class VoiceAnnouncementCardEditor extends HTMLElement {
         required: true,
         selector: { entity: { multiple: true, filter: [{ domain: "media_player" }] } },
       },
+      ...cardOnly([
+        {
+          name: "layout",
+          selector: { select: { mode: "box", options: this._options(CARD_LAYOUTS, "option.", true) } },
+        },
+      ]),
       {
         name: "recording_mode",
         selector: { select: { mode: "box", options: this._options(RECORDING_MODES, "option.", true) } },
@@ -1887,12 +2379,6 @@ class VoiceAnnouncementCardEditor extends HTMLElement {
         flatten: true,
         icon: "mdi:palette-outline",
         schema: [
-          ...cardOnly([
-            {
-              name: "layout",
-              selector: { select: { mode: "box", options: this._options(CARD_LAYOUTS, "option.", true) } },
-            },
-          ]),
           {
             name: "",
             type: "grid",
@@ -1924,6 +2410,26 @@ class VoiceAnnouncementCardEditor extends HTMLElement {
           { name: "playback_start_delay", selector: number(0, 15, 0.1) },
         ],
       },
+      ...cardOnly([
+        {
+          name: "tts",
+          type: "expandable",
+          flatten: true,
+          icon: "mdi:message-text-outline",
+          schema: [
+            { name: "tts_engine", selector: { entity: { filter: [{ domain: "tts" }] } } },
+            {
+              name: "",
+              type: "grid",
+              schema: [
+                { name: "tts_language", selector: { language: {} } },
+                { name: "tts_voice", selector: { text: {} } },
+              ],
+            },
+            { name: "quick_messages", selector: { text: { multiple: true } } },
+          ],
+        },
+      ]),
       {
         name: "audio",
         type: "expandable",
@@ -1991,7 +2497,14 @@ class VoiceAnnouncementCardEditor extends HTMLElement {
     const targets = getTargets(value);
     next.entity_id = targets.length === 1 ? targets[0] : targets;
 
-    for (const key of ["input_mime_candidates", "output_passthrough_rules"]) {
+    for (const key of [
+      "input_mime_candidates",
+      "output_passthrough_rules",
+      "tts_engine",
+      "tts_language",
+      "tts_voice",
+      "quick_messages",
+    ]) {
       if (isEmpty(value[key])) {
         delete next[key];
       } else {
