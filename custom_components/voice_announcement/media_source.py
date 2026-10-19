@@ -103,7 +103,7 @@ class VoiceAnnouncementMediaSource(MediaSource):
                         identifier=recording_id,
                         media_class=MediaClass.MUSIC,
                         media_content_type=MediaType.MUSIC,
-                        title=f"Voice announcement {label}",
+                        title=label,
                         can_play=True,
                         can_expand=False,
                     )

@@ -11,6 +11,7 @@ const DEFAULT_CONFIG = {
   min_duration: 0.5,
   auto_play: true,
   announce: true,
+  tts_cache: true,
   show_timer: true,
   playback_start_delay: 2,
   microphone_icon: "mdi:microphone",
@@ -51,6 +52,15 @@ const TRANSCODE_FIELDS = {
 };
 const MEDIA_ANNOUNCE_FEATURE = 1048576;
 const MAX_TARGETS = 20;
+const UPLOAD_ERRORS = {
+  400: "error.rejected",
+  401: "error.forbidden",
+  403: "error.forbidden",
+  413: "error.too_large",
+  415: "error.format",
+  429: "error.rate_limit",
+  503: "error.unavailable",
+};
 const MAX_MESSAGE_LENGTH = 300;
 const TTS_CHARS_PER_SECOND = 14;
 
@@ -165,6 +175,31 @@ const STRINGS = {
     "error.empty": "The recording is empty",
     "error.send": "Couldn't send the announcement",
     "error.no_api": "Home Assistant isn't connected",
+    "error.timeout": "The server took too long to respond",
+    "error.play": "Couldn't play on the speakers",
+    "error.rejected": "The server rejected the recording",
+    "error.forbidden": "You aren't allowed to use these speakers",
+    "error.too_large": "The recording is too long",
+    "error.format": "This browser's audio format isn't supported",
+    "error.rate_limit": "Too many messages. Try again in a minute",
+    "error.unavailable": "Audio conversion isn't available on the server",
+    "config.invalid": "Invalid card configuration",
+    "config.entities": "Add at least one media player under entities",
+    "config.max_targets": "You can add up to {count} speakers",
+    "config.list": "{key} must be a list",
+    "config.text": "{key} must be text",
+    "config.object": "{key} must be an object",
+    "config.choice": "{key} must be one of: {values}",
+    "config.icon": "{key} must be an icon name, for example mdi:microphone",
+    "config.color": "{key} must be a Home Assistant color name or a hex color",
+    "config.max_duration": "max_duration must be greater than zero",
+    "config.min_duration": "min_duration must be zero or more and lower than max_duration",
+    "config.delay": "playback_start_delay must be zero or greater",
+    "config.tts_engine": "tts_engine must be a text-to-speech entity, for example tts.home_assistant_cloud",
+    "picker.card": "Record or type a message and play it on one or more speakers.",
+    "picker.badge": "Record a voice message from a badge and play it on your speakers.",
+    "label.quick_message": "Message",
+    "label.quick_icon": "Icon",
     "editor.appearance": "Appearance",
     "editor.recording": "Recording and playback",
     "editor.audio": "Audio format",
@@ -172,14 +207,22 @@ const STRINGS = {
     "editor.tts": "Text to speech",
     "label.tts_engine": "Text-to-speech engine",
     "label.tts_language": "Language",
+    "option.engine_default": "Engine default",
     "label.tts_voice": "Voice",
+    "label.tts_cache": "Cache generated audio",
+    "helper.tts_cache": "Reuses the audio when the same message is sent again, so it plays sooner. Turn it off if your engine should always generate it anew.",
     "label.quick_messages": "Quick messages",
     "helper.layout": "Message box and tabs need a text-to-speech engine. Without one, the card uses the horizontal layout.",
     "helper.tts_engine": "Lets you type messages that are read aloud on the chosen speakers.",
-    "helper.tts_language": "Leave empty to use the engine's default language.",
+    "helper.tts_language": "Optional. Leave empty to use the language set in your text-to-speech integration.",
     "helper.tts_voice": "Optional. The voice name exactly as your engine lists it.",
-    "helper.quick_messages": "Phrases you can send with a single tap.",
-    "label.entity_id": "Speakers",
+    "helper.quick_messages": "Phrases you can send with a single tap. Drag to change their order and use the pencil to add an icon.",
+    "label.entities": "Speakers",
+    "label.target": "Speaker",
+    "label.target_name": "Name",
+    "label.target_icon": "Icon",
+    "label.target_color": "Color",
+    "helper.target_name": "Leave empty to use the speaker's name in Home Assistant.",
     "label.recording_mode": "Recording mode",
     "label.selection_mode": "Speaker selection",
     "label.layout": "Layout",
@@ -205,7 +248,7 @@ const STRINGS = {
     "label.status_css": "Status text CSS",
     "label.timer_css": "Timer CSS",
     "label.text_css": "Text area CSS",
-    "helper.entity_id": "Pick one speaker, or several to choose from right on the card.",
+    "helper.entities": "Pick one speaker, or several to choose from on the card. Drag to change their order and use the pencil to set a name, icon, or color.",
     "helper.max_duration": "Recording stops automatically at this length.",
     "helper.min_duration": "Shorter recordings are discarded, so accidental taps aren't sent.",
     "helper.auto_play": "Plays the announcement as soon as it's uploaded.",
@@ -289,6 +332,31 @@ const STRINGS = {
     "error.empty": "La grabación está vacía",
     "error.send": "No se pudo enviar el anuncio",
     "error.no_api": "Home Assistant no está conectado",
+    "error.timeout": "El servidor tardó demasiado en responder",
+    "error.play": "No se pudo reproducir en los altavoces",
+    "error.rejected": "El servidor rechazó la grabación",
+    "error.forbidden": "No tienes permiso para usar estos altavoces",
+    "error.too_large": "La grabación es demasiado larga",
+    "error.format": "El formato de audio de este navegador no es compatible",
+    "error.rate_limit": "Demasiados mensajes. Inténtalo en un minuto",
+    "error.unavailable": "La conversión de audio no está disponible en el servidor",
+    "config.invalid": "Configuración de tarjeta no válida",
+    "config.entities": "Agrega al menos un reproductor multimedia en entities",
+    "config.max_targets": "Puedes agregar hasta {count} altavoces",
+    "config.list": "{key} debe ser una lista",
+    "config.text": "{key} debe ser texto",
+    "config.object": "{key} debe ser un objeto",
+    "config.choice": "{key} debe ser uno de: {values}",
+    "config.icon": "{key} debe ser un nombre de icono, por ejemplo mdi:microphone",
+    "config.color": "{key} debe ser un nombre de color de Home Assistant o un color hexadecimal",
+    "config.max_duration": "max_duration debe ser mayor que cero",
+    "config.min_duration": "min_duration debe ser cero o más y menor que max_duration",
+    "config.delay": "playback_start_delay debe ser cero o más",
+    "config.tts_engine": "tts_engine debe ser una entidad de texto a voz, por ejemplo tts.home_assistant_cloud",
+    "picker.card": "Graba o escribe un mensaje y reprodúcelo en uno o más altavoces.",
+    "picker.badge": "Graba un mensaje de voz desde un badge y reprodúcelo en tus altavoces.",
+    "label.quick_message": "Mensaje",
+    "label.quick_icon": "Icono",
     "editor.appearance": "Apariencia",
     "editor.recording": "Grabación y reproducción",
     "editor.audio": "Formato de audio",
@@ -296,14 +364,22 @@ const STRINGS = {
     "editor.tts": "Texto a voz",
     "label.tts_engine": "Motor de texto a voz",
     "label.tts_language": "Idioma",
+    "option.engine_default": "Predeterminado del motor",
     "label.tts_voice": "Voz",
+    "label.tts_cache": "Guardar en caché el audio generado",
+    "helper.tts_cache": "Reutiliza el audio cuando se envía el mismo mensaje otra vez, así suena antes. Desactívalo si tu motor debe generarlo de nuevo cada vez.",
     "label.quick_messages": "Mensajes rápidos",
     "helper.layout": "El cuadro de mensaje y las pestañas necesitan un motor de texto a voz. Sin él, la tarjeta usa el diseño horizontal.",
     "helper.tts_engine": "Permite escribir mensajes que se leen en voz alta en los altavoces elegidos.",
-    "helper.tts_language": "Déjalo vacío para usar el idioma por defecto del motor.",
+    "helper.tts_language": "Opcional. Déjalo vacío para usar el idioma configurado en tu integración de texto a voz.",
     "helper.tts_voice": "Opcional. El nombre de la voz tal como lo muestra tu motor.",
-    "helper.quick_messages": "Frases que puedes enviar con un solo toque.",
-    "label.entity_id": "Altavoces",
+    "helper.quick_messages": "Frases que puedes enviar con un solo toque. Arrástralas para cambiar el orden y usa el lápiz para agregarles un icono.",
+    "label.entities": "Altavoces",
+    "label.target": "Altavoz",
+    "label.target_name": "Nombre",
+    "label.target_icon": "Icono",
+    "label.target_color": "Color",
+    "helper.target_name": "Déjalo vacío para usar el nombre del altavoz en Home Assistant.",
     "label.recording_mode": "Modo de grabación",
     "label.selection_mode": "Selección de altavoces",
     "label.layout": "Diseño",
@@ -329,7 +405,7 @@ const STRINGS = {
     "label.status_css": "CSS del texto de estado",
     "label.timer_css": "CSS del temporizador",
     "label.text_css": "CSS de la zona de texto",
-    "helper.entity_id": "Elige un altavoz, o varios para escoger directamente desde la tarjeta.",
+    "helper.entities": "Elige un altavoz, o varios para escoger desde la tarjeta. Arrástralos para cambiar el orden y usa el lápiz para ponerles nombre, icono o color.",
     "helper.max_duration": "La grabación se detiene sola al llegar a esta duración.",
     "helper.min_duration": "Las grabaciones más cortas se descartan, así no se envían toques accidentales.",
     "helper.auto_play": "Reproduce el anuncio apenas termina de subirse.",
@@ -379,8 +455,14 @@ const STRINGS = {
   },
 };
 
+function getLanguage(hass) {
+  // Before hass arrives, the page and browser language avoid flashing English text.
+  const language = hass?.locale?.language || hass?.language || document.documentElement.lang || navigator.language;
+  return String(language || "en").split("-")[0].toLowerCase();
+}
+
 function localize(hass, key, vars = {}) {
-  const language = String(hass?.locale?.language || hass?.language || "en").split("-")[0];
+  const language = getLanguage(hass);
   const template = STRINGS[language]?.[key] ?? STRINGS.en[key] ?? key;
   return template.replace(/\{(\w+)\}/g, (_match, name) => String(vars[name] ?? ""));
 }
@@ -393,9 +475,32 @@ function isStringArray(value) {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
+function getTargetItems(config) {
+  // `entities` items are an entity id or { entity, name, icon, color }; `entity_id` is the legacy form.
+  const raw = config?.entities !== undefined ? config.entities : config?.entity_id;
+  const items = [];
+  for (const item of Array.isArray(raw) ? raw : [raw]) {
+    const entity = String((isPlainObject(item) ? item.entity : item) ?? "").trim();
+    if (entity && !items.some((existing) => existing.entity === entity)) {
+      items.push(isPlainObject(item) ? { ...item, entity } : { entity });
+    }
+  }
+  return items;
+}
+
+function getQuickMessageItems(config) {
+  const raw = Array.isArray(config?.quick_messages) ? config.quick_messages : [];
+  return raw
+    .map((item) =>
+      isPlainObject(item)
+        ? { ...item, message: String(item.message ?? "").trim() }
+        : { message: String(item ?? "").trim() }
+    )
+    .filter((item) => item.message);
+}
+
 function getTargets(config) {
-  const raw = Array.isArray(config?.entity_id) ? config.entity_id : [config?.entity_id];
-  return [...new Set(raw.filter((item) => typeof item === "string" && item.trim()))];
+  return getTargetItems(config).map((item) => item.entity);
 }
 
 function normalizeIconName(value) {
@@ -526,7 +631,7 @@ async function withTimeout(promise, timeoutMs, label, onTimeout) {
   const timeoutPromise = new Promise((_resolve, reject) => {
     timeout = window.setTimeout(() => {
       onTimeout?.();
-      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+      reject(Object.assign(new Error(`${label} timed out after ${timeoutMs}ms`), { name: "TimeoutError" }));
     }, timeoutMs);
   });
   try {
@@ -927,17 +1032,32 @@ const CARD_CSS = `
 
   .target ha-icon {
     --mdc-icon-size: 18px;
-    display: none;
     margin-inline-start: -4px;
   }
 
+  .target .check {
+    display: none;
+  }
+
+  .target .target-icon {
+    color: var(--voice-announcement-target-color, var(--secondary-text-color));
+  }
+
   .target[aria-pressed="true"] {
-    background: color-mix(in srgb, var(--primary-color) 18%, transparent);
+    background: color-mix(
+      in srgb,
+      var(--voice-announcement-target-color, var(--primary-color)) 18%,
+      transparent
+    );
     border-color: transparent;
   }
 
-  .target[aria-pressed="true"] ha-icon {
+  .target[aria-pressed="true"]:not(.has-icon) .check {
     display: inline-flex;
+  }
+
+  .target[aria-pressed="true"] .target-icon {
+    color: var(--voice-announcement-target-color, var(--primary-color));
   }
 
   .quick {
@@ -954,6 +1074,12 @@ const CARD_CSS = `
   .quick-message {
     background: var(--voice-announcement-quick-background, transparent);
     border-radius: var(--voice-announcement-quick-border-radius, 16px);
+  }
+
+  .quick-message ha-icon {
+    --mdc-icon-size: 18px;
+    color: var(--voice-announcement-quick-icon-color, var(--secondary-text-color));
+    margin-inline-start: -4px;
   }
 
   .quick-message:hover,
@@ -1167,7 +1293,8 @@ class VoiceAnnouncementCard extends HTMLElement {
   setConfig(config) {
     this._validateConfig(config);
     this._config = { ...DEFAULT_CONFIG, ...config };
-    this._targets = getTargets(config);
+    this._targetOptions = new Map(getTargetItems(config).map((item) => [item.entity, item]));
+    this._targets = [...this._targetOptions.keys()];
     const stored = this._hasPicker() ? readStorage(this._storageKey()) : null;
     const remembered = Array.isArray(stored)
       ? stored.filter((entityId) => this._targets.includes(entityId))
@@ -1233,9 +1360,7 @@ class VoiceAnnouncementCard extends HTMLElement {
   }
 
   _quickMessages() {
-    return this._hasTts() && Array.isArray(this._config.quick_messages)
-      ? this._config.quick_messages.map((item) => String(item).trim()).filter(Boolean)
-      : [];
+    return this._hasTts() ? getQuickMessageItems(this._config) : [];
   }
 
   _isAutoHeight() {
@@ -1247,19 +1372,37 @@ class VoiceAnnouncementCard extends HTMLElement {
   }
 
   _storageKey() {
-    return `voice-announcement-targets:${this._config.selection_mode}:${this._targets.join(",")}`;
+    // Sorted, so reordering the chips keeps the remembered selection.
+    return `voice-announcement-targets:${this._config.selection_mode}:${[...this._targets].sort().join(",")}`;
   }
 
   _validateConfig(config) {
+    const fail = (key, vars) => {
+      throw new Error(this._t(key, vars));
+    };
     if (!isPlainObject(config)) {
-      throw new Error("Invalid card configuration");
+      fail("config.invalid");
     }
-    const targets = getTargets(config);
-    if (!targets.length || targets.some((entityId) => !entityId.startsWith("media_player."))) {
-      throw new Error("entity_id is required and must list media_player entities");
+    if (config.entities !== undefined && !Array.isArray(config.entities)) {
+      fail("config.list", { key: "entities" });
     }
-    if (targets.length > MAX_TARGETS) {
-      throw new Error(`entity_id supports up to ${MAX_TARGETS} media players`);
+    const items = getTargetItems(config);
+    if (!items.length || items.some((item) => !item.entity.startsWith("media_player."))) {
+      fail("config.entities");
+    }
+    if (items.length > MAX_TARGETS) {
+      fail("config.max_targets", { count: MAX_TARGETS });
+    }
+    for (const item of items) {
+      if (item.name !== undefined && typeof item.name !== "string") {
+        fail("config.text", { key: `${item.entity} name` });
+      }
+      if (item.icon !== undefined && !normalizeIconName(item.icon)) {
+        fail("config.icon", { key: `${item.entity} icon` });
+      }
+      if (item.color !== undefined && !isValidColor(item.color)) {
+        fail("config.color", { key: `${item.entity} color` });
+      }
     }
     const choices = {
       recording_mode: RECORDING_MODES,
@@ -1271,50 +1414,58 @@ class VoiceAnnouncementCard extends HTMLElement {
     };
     for (const [key, allowed] of Object.entries(choices)) {
       if (config[key] !== undefined && !allowed.includes(config[key])) {
-        throw new Error(`${key} must be one of: ${allowed.join(", ")}`);
+        fail("config.choice", { key, values: allowed.join(", ") });
       }
     }
     for (const key of ["microphone_icon", "speaker_icon"]) {
       if (config[key] !== undefined && !normalizeIconName(config[key])) {
-        throw new Error(`${key} must be an icon name, for example mdi:microphone`);
+        fail("config.icon", { key });
       }
     }
     if (config.active_color !== undefined && !isValidColor(config.active_color)) {
-      throw new Error("active_color must be a Home Assistant color name or a hex color");
+      fail("config.color", { key: "active_color" });
     }
     const maxDuration = Number(config.max_duration ?? DEFAULT_CONFIG.max_duration);
     const minDuration = Number(config.min_duration ?? DEFAULT_CONFIG.min_duration);
     const startDelay = Number(config.playback_start_delay ?? DEFAULT_CONFIG.playback_start_delay);
     if (!Number.isFinite(maxDuration) || maxDuration <= 0) {
-      throw new Error("max_duration must be greater than zero");
+      fail("config.max_duration");
     }
     if (!Number.isFinite(minDuration) || minDuration < 0 || maxDuration <= minDuration) {
-      throw new Error("min_duration must be zero or more and lower than max_duration");
+      fail("config.min_duration");
     }
     if (!Number.isFinite(startDelay) || startDelay < 0) {
-      throw new Error("playback_start_delay must be zero or greater");
+      fail("config.delay");
     }
     if (config.input_mime_candidates !== undefined && !isStringArray(config.input_mime_candidates)) {
-      throw new Error("input_mime_candidates must be a list of MIME types");
+      fail("config.list", { key: "input_mime_candidates" });
     }
     if (config.output_passthrough_rules !== undefined && !Array.isArray(config.output_passthrough_rules)) {
-      throw new Error("output_passthrough_rules must be a list");
+      fail("config.list", { key: "output_passthrough_rules" });
     }
     if (config.transcode_target !== undefined && !isPlainObject(config.transcode_target)) {
-      throw new Error("transcode_target must be an object");
+      fail("config.object", { key: "transcode_target" });
     }
     if (
       config.tts_engine !== undefined &&
       (typeof config.tts_engine !== "string" || !config.tts_engine.startsWith("tts."))
     ) {
-      throw new Error("tts_engine must be a tts entity, for example tts.home_assistant_cloud");
+      fail("config.tts_engine");
     }
-    if (config.quick_messages !== undefined && !isStringArray(config.quick_messages)) {
-      throw new Error("quick_messages must be a list of texts");
+    if (config.quick_messages !== undefined && !Array.isArray(config.quick_messages)) {
+      fail("config.list", { key: "quick_messages" });
+    }
+    for (const item of config.quick_messages || []) {
+      if (isPlainObject(item) ? typeof item.message !== "string" : typeof item !== "string") {
+        fail("config.text", { key: "quick_messages" });
+      }
+      if (isPlainObject(item) && item.icon !== undefined && !normalizeIconName(item.icon)) {
+        fail("config.icon", { key: `quick_messages ${item.message} icon` });
+      }
     }
     for (const key of ["button_css", "status_css", "timer_css", "text_css", "tts_language", "tts_voice"]) {
       if (config[key] !== undefined && typeof config[key] !== "string") {
-        throw new Error(`${key} must be a string`);
+        fail("config.text", { key });
       }
     }
   }
@@ -1355,8 +1506,9 @@ class VoiceAnnouncementCard extends HTMLElement {
       <div class="quick" part="quick" role="group">
         ${this._quickMessages()
           .map(
-            (message) => `
+            ({ message, icon }) => `
               <button class="quick-message" part="quick-message" type="button" data-message="${escapeHtml(message)}">
+                ${normalizeIconName(icon) ? `<ha-icon part="quick-icon" icon="${escapeHtml(normalizeIconName(icon))}"></ha-icon>` : ""}
                 <span>${escapeHtml(message)}</span>
               </button>`
           )
@@ -1487,7 +1639,11 @@ class VoiceAnnouncementCard extends HTMLElement {
   }
 
   _targetName(entityId) {
-    return this._hass?.states?.[entityId]?.attributes?.friendly_name || entityId;
+    return (
+      this._targetOptions?.get(entityId)?.name ||
+      this._hass?.states?.[entityId]?.attributes?.friendly_name ||
+      entityId
+    );
   }
 
   _targetLabel() {
@@ -1601,7 +1757,7 @@ class VoiceAnnouncementCard extends HTMLElement {
     } catch (err) {
       this._cleanupAudioGraph();
       this._stopTracks();
-      this._setError(this._formatError(err, "error.start"));
+      this._setError(err, "error.start");
     }
   }
 
@@ -1631,7 +1787,7 @@ class VoiceAnnouncementCard extends HTMLElement {
           await withTimeout(stopPromise, RECORDING_STOP_TIMEOUT_MS, "MediaRecorder stop");
         }
       } catch (err) {
-        this._setError(this._formatError(err, "error.stop"));
+        this._setError(err, "error.stop");
         return;
       } finally {
         this._cleanupAudioGraph();
@@ -1649,7 +1805,7 @@ class VoiceAnnouncementCard extends HTMLElement {
         await yieldToUi();
         const blob = await this._buildRecordingBlob(recorder);
         if (blob.size === 0) {
-          throw new Error(this._t("error.empty"));
+          throw this._localizedError("error.empty");
         }
         const result = await this._uploadRecording(blob, duration, targets);
         if (this._config.auto_play !== false) {
@@ -1665,7 +1821,7 @@ class VoiceAnnouncementCard extends HTMLElement {
           this._flashStatus("card.sent");
         }
       } catch (err) {
-        this._setError(this._formatError(err, "error.send"));
+        this._setError(err, "error.send");
       }
     } finally {
       this._recorder = undefined;
@@ -1743,7 +1899,7 @@ class VoiceAnnouncementCard extends HTMLElement {
   async _startWavFallbackRecorder(stream) {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextClass) {
-      throw new Error(this._t("error.unsupported"));
+      throw this._localizedError("error.unsupported");
     }
 
     let audioContext;
@@ -1891,14 +2047,21 @@ class VoiceAnnouncementCard extends HTMLElement {
     );
     if (!response.ok) {
       const detail = await withTimeout(response.text(), RESPONSE_BODY_TIMEOUT_MS, "Upload error");
-      throw new Error(detail.trim().slice(0, MAX_ERROR_LENGTH) || response.statusText);
+      throw this._localizedError(UPLOAD_ERRORS[response.status] || "error.send", detail || response.statusText);
     }
     return withTimeout(response.json(), RESPONSE_BODY_TIMEOUT_MS, "Upload response");
   }
 
+  _localizedError(key, detail) {
+    return Object.assign(new Error(this._t(key)), {
+      localized: true,
+      detail: String(detail ?? "").trim().slice(0, MAX_ERROR_LENGTH),
+    });
+  }
+
   async _playMedia(mediaContentId, mediaContentType, targets) {
     if (typeof this._hass?.callService !== "function") {
-      throw new Error(this._t("error.no_api"));
+      throw this._localizedError("error.no_api");
     }
     // One call per speaker so announce mode is only requested where it is supported.
     await Promise.all(
@@ -1912,13 +2075,15 @@ class VoiceAnnouncementCard extends HTMLElement {
           ...(announce ? { announce: true } : {}),
         });
       })
-    );
+    ).catch((err) => {
+      throw this._localizedError("error.play", err?.message);
+    });
   }
 
   _ttsMediaId(message) {
     const params = [
       ["message", message],
-      ["cache", "true"],
+      ["cache", this._config.tts_cache === false ? "false" : "true"],
       ...(this._config.tts_language ? [["language", this._config.tts_language]] : []),
       ...(this._config.tts_voice ? [["tts_options", JSON.stringify({ voice: this._config.tts_voice })]] : []),
     ];
@@ -1943,7 +2108,7 @@ class VoiceAnnouncementCard extends HTMLElement {
       await this._holdPlaybackStatus(message.length / TTS_CHARS_PER_SECOND, playbackStartedAt);
       this._setState("idle");
     } catch (err) {
-      this._setError(this._formatError(err, "error.send"));
+      this._setError(err, "error.send");
     }
   }
 
@@ -2009,13 +2174,16 @@ class VoiceAnnouncementCard extends HTMLElement {
 
   _setState(state, statusKey) {
     this._state = state;
+    this._statusElement?.removeAttribute("title");
     this._status = statusKey ? this._t(statusKey, { target: this._targetLabel() }) : "";
     this._updateUi();
   }
 
-  _setError(message) {
+  _setError(err, fallbackKey) {
     this._state = "error";
-    this._status = message;
+    this._status = this._formatError(err, fallbackKey);
+    // Technical details stay out of the status text but remain reachable as a tooltip.
+    this._statusElement?.setAttribute("title", err?.detail || (err?.localized ? "" : err?.message) || "");
     this._updateUi();
     this._scheduleIdle();
   }
@@ -2035,13 +2203,14 @@ class VoiceAnnouncementCard extends HTMLElement {
   }
 
   _formatError(err, fallbackKey) {
-    if (err?.name === "NotAllowedError") {
-      return this._t("error.mic_denied");
+    if (typeof err === "string") {
+      return err;
     }
-    if (err?.name === "NotFoundError") {
-      return this._t("error.no_mic");
+    const keys = { NotAllowedError: "error.mic_denied", NotFoundError: "error.no_mic", TimeoutError: "error.timeout" };
+    if (keys[err?.name]) {
+      return this._t(keys[err.name]);
     }
-    return err?.message || this._t(fallbackKey);
+    return err?.localized ? err.message : this._t(fallbackKey);
   }
 
   _isIdle() {
@@ -2064,7 +2233,7 @@ class VoiceAnnouncementCard extends HTMLElement {
   }
 
   _updateLabels() {
-    const language = this._hass?.locale?.language;
+    const language = getLanguage(this._hass);
     if (!this._messageInput || this._labelsLanguage === language) {
       return;
     }
@@ -2153,23 +2322,32 @@ class VoiceAnnouncementCard extends HTMLElement {
     };
     const chips = [
       ...(this._isSingleSelect() ? [] : [allChip]),
-      ...this._targets.map((entityId) => ({
-        id: entityId,
-        name: this._targetName(entityId),
-        pressed: this._selected.includes(entityId) && this._isAvailable(entityId),
-        disabled: !this._isAvailable(entityId),
-      })),
+      ...this._targets.map((entityId) => {
+        const options = this._targetOptions.get(entityId);
+        return {
+          id: entityId,
+          name: this._targetName(entityId),
+          icon: normalizeIconName(options?.icon),
+          color: options?.color ? computeCssColor(options.color) : "",
+          pressed: this._selected.includes(entityId) && this._isAvailable(entityId),
+          disabled: !this._isAvailable(entityId),
+        };
+      }),
     ];
-    // Rebuild only when names change, so toggling a chip keeps keyboard focus.
-    const signature = JSON.stringify(chips.map((chip) => chip.name));
+    // Rebuild only when the chips' content changes, so toggling a chip keeps keyboard focus.
+    const signature = JSON.stringify(chips.map(({ name, icon, color }) => [name, icon, color]));
     if (signature !== this._targetsSignature) {
       this._targetsSignature = signature;
       this._targetsElement.setAttribute("aria-label", this._t("card.targets_aria"));
       this._targetsElement.innerHTML = chips
         .map(
           (chip) => `
-            <button class="target" part="target" type="button" data-target="${escapeHtml(chip.id)}">
-              <ha-icon icon="mdi:check"></ha-icon><span>${escapeHtml(chip.name)}</span>
+            <button class="target${chip.icon ? " has-icon" : ""}" part="target" type="button"
+              data-target="${escapeHtml(chip.id)}"
+              ${chip.color ? `style="--voice-announcement-target-color: ${escapeHtml(chip.color)}"` : ""}>
+              <ha-icon class="check" icon="mdi:check"></ha-icon>
+              ${chip.icon ? `<ha-icon class="target-icon" part="target-icon" icon="${escapeHtml(chip.icon)}"></ha-icon>` : ""}
+              <span>${escapeHtml(chip.name)}</span>
             </button>`
         )
         .join("");
@@ -2253,6 +2431,7 @@ class VoiceAnnouncementCardEditor extends HTMLElement {
     this._config = undefined;
     this._form = undefined;
     this._language = undefined;
+    this._engineLanguages = {};
   }
 
   set hass(hass) {
@@ -2347,9 +2526,29 @@ class VoiceAnnouncementCardEditor extends HTMLElement {
 
     return [
       {
-        name: "entity_id",
+        name: "entities",
         required: true,
-        selector: { entity: { multiple: true, filter: [{ domain: "media_player" }] } },
+        selector: {
+          object: {
+            multiple: true,
+            label_field: "entity",
+            description_field: "name",
+            fields: {
+              entity: {
+                label: this._t("label.target"),
+                required: true,
+                selector: { entity: { filter: [{ domain: "media_player" }] } },
+              },
+              name: {
+                label: this._t("label.target_name"),
+                description: this._t("helper.target_name"),
+                selector: { text: {} },
+              },
+              icon: { label: this._t("label.target_icon"), selector: { icon: {} } },
+              color: { label: this._t("label.target_color"), selector: { ui_color: {} } },
+            },
+          },
+        },
       },
       ...cardOnly([
         {
@@ -2422,11 +2621,29 @@ class VoiceAnnouncementCardEditor extends HTMLElement {
               name: "",
               type: "grid",
               schema: [
-                { name: "tts_language", selector: { language: {} } },
+                {
+                  name: "tts_language",
+                  selector: {
+                    select: { mode: "dropdown", custom_value: true, options: this._ttsLanguageOptions() },
+                  },
+                },
                 { name: "tts_voice", selector: { text: {} } },
               ],
             },
-            { name: "quick_messages", selector: { text: { multiple: true } } },
+            { name: "tts_cache", selector: { boolean: {} } },
+            {
+              name: "quick_messages",
+              selector: {
+                object: {
+                  multiple: true,
+                  label_field: "message",
+                  fields: {
+                    message: { label: this._t("label.quick_message"), required: true, selector: { text: {} } },
+                    icon: { label: this._t("label.quick_icon"), selector: { icon: {} } },
+                  },
+                },
+              },
+            },
           ],
         },
       ]),
@@ -2473,7 +2690,13 @@ class VoiceAnnouncementCardEditor extends HTMLElement {
   _formData() {
     const config = this._config || {};
     const target = isPlainObject(config.transcode_target) ? config.transcode_target : {};
-    const data = { ...DEFAULT_CONFIG, ...config, entity_id: getTargets(config) };
+    const data = {
+      ...DEFAULT_CONFIG,
+      ...config,
+      entities: getTargetItems(config),
+      quick_messages: getQuickMessageItems(config),
+      tts_language: config.tts_language ?? "",
+    };
     for (const [name, field] of Object.entries(TRANSCODE_FIELDS)) {
       data[name] = target[field.key] === undefined ? undefined : String(target[field.key]);
     }
@@ -2494,8 +2717,21 @@ class VoiceAnnouncementCardEditor extends HTMLElement {
       }
     }
 
-    const targets = getTargets(value);
-    next.entity_id = targets.length === 1 ? targets[0] : targets;
+    const quickMessages = getQuickMessageItems({ quick_messages: value.quick_messages ?? [] }).map((item) =>
+      item.icon ? { message: item.message, icon: item.icon } : item.message
+    );
+    if (quickMessages.length) {
+      next.quick_messages = quickMessages;
+    } else {
+      delete next.quick_messages;
+    }
+
+    // Speakers without overrides are stored as plain entity ids to keep the YAML short.
+    next.entities = getTargetItems({ entities: value.entities ?? [] }).map((item) => {
+      const clean = Object.fromEntries(Object.entries(item).filter(([, option]) => !isEmpty(option)));
+      return Object.keys(clean).length === 1 ? clean.entity : clean;
+    });
+    delete next.entity_id;
 
     for (const key of [
       "input_mime_candidates",
@@ -2503,7 +2739,6 @@ class VoiceAnnouncementCardEditor extends HTMLElement {
       "tts_engine",
       "tts_language",
       "tts_voice",
-      "quick_messages",
     ]) {
       if (isEmpty(value[key])) {
         delete next[key];
@@ -2535,6 +2770,45 @@ class VoiceAnnouncementCardEditor extends HTMLElement {
     this.dispatchEvent(
       new CustomEvent("config-changed", { detail: { config: next }, bubbles: true, composed: true })
     );
+  }
+
+  _ttsLanguageOptions() {
+    // HA's language selector can't be cleared once set, so "engine default" is an explicit option.
+    const engine = this._config?.tts_engine;
+    if (engine && this._hass && !this._engineLanguages[engine]) {
+      this._engineLanguages[engine] = [];
+      this._hass
+        .callWS({ type: "tts/engine/get", engine_id: engine })
+        .then((result) => {
+          this._engineLanguages[engine] = result?.provider?.supported_languages || [];
+          if (this._form) {
+            this._form.schema = this._schema();
+          }
+        })
+        .catch(() => undefined);
+    }
+    const codes = [...(this._engineLanguages[engine] || [])];
+    if (this._config?.tts_language && !codes.includes(this._config.tts_language)) {
+      codes.unshift(this._config.tts_language);
+    }
+    let names;
+    try {
+      names = new Intl.DisplayNames([getLanguage(this._hass)], { type: "language" });
+    } catch (_err) {
+      names = undefined;
+    }
+    const label = (code) => {
+      try {
+        const name = names?.of(code);
+        return name && name !== code ? `${name} (${code})` : code;
+      } catch (_err) {
+        return code;
+      }
+    };
+    return [
+      { value: "", label: this._t("option.engine_default") },
+      ...codes.map((code) => ({ value: code, label: label(code) })).sort((a, b) => a.label.localeCompare(b.label)),
+    ];
   }
 
   _computeLabel(schema) {
@@ -2606,15 +2880,10 @@ function registerPickerEntry(collectionName, type, name, description) {
   }
 }
 
-registerPickerEntry(
-  "customCards",
-  VOICE_ANNOUNCEMENT_TAG,
-  "Voice Announcement",
-  "Record a voice message and play it on one or more speakers."
-);
+registerPickerEntry("customCards", VOICE_ANNOUNCEMENT_TAG, "Voice Announcement", localize(undefined, "picker.card"));
 registerPickerEntry(
   "customBadges",
   VOICE_ANNOUNCEMENT_BADGE_TAG,
   "Voice Announcement",
-  "Record a voice message from a badge and play it on your speakers."
+  localize(undefined, "picker.badge")
 );

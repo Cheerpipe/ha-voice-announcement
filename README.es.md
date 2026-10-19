@@ -12,9 +12,9 @@ Háblale a tu casa. Presiona un botón en tu dashboard y di algo, o escribe un m
 ## Qué incluye
 
 - **Una tarjeta y un badge** que graban un mensaje de voz desde cualquier navegador o desde la app de Home Assistant.
-- **Mensajes escritos y mensajes rápidos.** Si agregas un motor de texto a voz, la misma tarjeta lee en voz alta lo que escribes. Guarda las frases que más usas y envíalas con un toque.
+- **Mensajes escritos y mensajes rápidos.** Si agregas un motor de texto a voz, la misma tarjeta lee en voz alta lo que escribes. Guarda las frases que más usas, con icono si quieres, y envíalas con un toque.
 - **Cuatro diseños:** tile, un botón vertical grande para popups, un cuadro de mensaje como Assist y pestañas de voz y texto.
-- **Uno o varios altavoces.** Si indicas varios, la tarjeta muestra chips para elegir a dónde va el mensaje, con un atajo *Todos*. Puedes permitir varios a la vez o solo uno.
+- **Uno o varios altavoces.** Si indicas varios, la tarjeta muestra chips para elegir a dónde va el mensaje, con un atajo *Todos*. Puedes permitir varios a la vez o solo uno, y darle a cada altavoz su propio nombre, icono y color.
 - **Mantener para hablar o tocar para hablar.** También con teclado: mantén Espacio o Enter, y presiona Enter para enviar texto.
 - **Modo anuncio.** En los altavoces compatibles, la música baja durante el mensaje y luego continúa.
 - **Suena en casi cualquier parlante.** Por defecto las grabaciones se convierten a MP3, así que HomePod, Google y Nest, Sonos, Music Assistant y la mayoría de los reproductores pueden reproducirlas.
@@ -57,7 +57,8 @@ Lo mismo en YAML:
 
 ```yaml
 type: custom:voice-announcement-card
-entity_id: media_player.kitchen
+entities:
+  - media_player.kitchen
 ```
 
 ### Diseños
@@ -73,22 +74,28 @@ entity_id: media_player.kitchen
 
 ### Elegir entre varios altavoces
 
-Si le das una lista de altavoces, la tarjeta muestra un chip por cada uno. Toca los chips para decidir a dónde va el próximo mensaje. La tarjeta recuerda tu elección en cada dispositivo.
+Si le das una lista de altavoces, la tarjeta muestra un chip por cada uno, en el mismo orden. Toca los chips para decidir a dónde va el próximo mensaje. La tarjeta recuerda tu elección en cada dispositivo.
 
 ```yaml
 type: custom:voice-announcement-card
-entity_id:
-  - media_player.kitchen
+entities:
+  - entity: media_player.kitchen
+    name: Cocina
+    icon: mdi:silverware-fork-knife
+    color: orange
   - media_player.living_room
-  - media_player.bedroom
+  - entity: media_player.bedroom
+    icon: mdi:bed
 selection_mode: multiple   # o "single" para permitir un solo altavoz a la vez
 ```
+
+Cada altavoz puede ser solo su entidad o tener su propio `name`, `icon` y `color`. El color tiñe el chip cuando está elegido. En el editor, arrastra los altavoces para cambiar el orden y usa el lápiz para personalizar uno.
 
 Con `selection_mode: multiple` también aparece el chip **Todos**. Con `single`, al elegir un altavoz se reemplaza el anterior.
 
 ### Mensajes escritos y mensajes rápidos
 
-Elige un motor en **Texto a voz** y la tarjeta tendrá un cuadro de mensaje. Los mensajes rápidos aparecen como chips que se envían con un toque.
+Elige un motor en **Texto a voz** y la tarjeta tendrá un cuadro de mensaje. Los mensajes rápidos aparecen como chips que se envían con un toque; puedes darles un icono y arrastrarlos en el editor para cambiar el orden.
 
 ```yaml
 type: custom:voice-announcement-card
@@ -99,9 +106,12 @@ entity_id:
 tts_engine: tts.home_assistant_cloud
 tts_language: es-ES        # opcional
 tts_voice: ElviraNeural    # opcional, solo si tu motor tiene voces
+tts_cache: true            # opcional, reutiliza el audio de mensajes repetidos
 quick_messages:
-  - A comer
-  - Ya llegué
+  - message: A comer
+    icon: mdi:silverware-fork-knife
+  - message: Ya llegué
+    icon: mdi:home-import-outline
   - Nos vamos en 5 minutos
 ```
 
@@ -122,9 +132,10 @@ cards:
     selection_mode: multiple
     tts_engine: tts.home_assistant_cloud
     quick_messages:
-      - A comer
+      - message: A comer
+        icon: mdi:silverware-fork-knife
       - Nos vamos
-    entity_id:
+    entities:
       - media_player.player1
       - media_player.player2
       - media_player.player3
@@ -150,7 +161,7 @@ tap_action:
       type: custom:voice-announcement-card
       layout: vertical
       tts_engine: tts.home_assistant_cloud
-      entity_id:
+      entities:
         - media_player.player1
         - media_player.player2
         - media_player.player3
@@ -166,21 +177,23 @@ El badge es un botón redondo y compacto para la parte superior de una vista. Gr
 
 ```yaml
 type: custom:voice-announcement-badge
-entity_id: media_player.kitchen
+entities:
+  - media_player.kitchen
 ```
 
 ## Opciones
 
 | Opción | Por defecto | Qué hace |
 | --- | --- | --- |
-| `entity_id` | obligatoria | Un reproductor multimedia o una lista de ellos. |
+| `entities` | obligatoria | Los altavoces, en el orden de los chips. Cada elemento es una entidad o tiene `entity`, `name`, `icon` y `color`. El antiguo `entity_id` (una entidad o una lista) sigue funcionando. |
 | `layout` | `horizontal` | `horizontal`, `vertical`, `composer` o `tabs`. Ver [Diseños](#diseños). |
 | `recording_mode` | `hold` | `hold` graba mientras mantienes el botón. `toggle` empieza con un toque y envía con el siguiente. |
 | `selection_mode` | `multiple` | Con varios altavoces: `multiple` permite cualquier combinación, `single` solo uno a la vez. |
 | `tts_engine` | – | Una entidad de texto a voz, como `tts.home_assistant_cloud`. Activa los mensajes escritos y rápidos. |
-| `tts_language` | la del motor | Idioma de los mensajes escritos, como `es-ES`. |
+| `tts_language` | la del motor | Idioma de los mensajes escritos, como `es-ES`. Omítelo para usar el idioma configurado en tu integración de texto a voz. |
 | `tts_voice` | la del motor | Nombre de la voz, en motores que ofrecen varias. |
-| `quick_messages` | – | Lista de frases para enviar con un toque. |
+| `tts_cache` | `true` | Reutiliza el audio generado cuando se envía el mismo mensaje otra vez, así suena antes. |
+| `quick_messages` | – | Frases para enviar con un toque. Cada elemento es un texto o tiene `message` e `icon`. |
 | `active_color` | `red` | Un nombre de color de Home Assistant (como `blue` o `primary`) o un color hexadecimal. |
 | `microphone_icon` | `mdi:microphone` | Icono en reposo y mientras graba. |
 | `speaker_icon` | `mdi:volume-high` | Icono mientras envía y reproduce. |
@@ -213,7 +226,8 @@ Cada parte de la tarjeta se puede cambiar con [UIX](https://github.com/Lint-Free
 ```yaml
 type: custom:voice-announcement-card
 layout: tabs
-entity_id: media_player.kitchen
+entities:
+  - media_player.kitchen
 tts_engine: tts.home_assistant_cloud
 uix:
   style: |
@@ -258,9 +272,9 @@ data:
 
 **"Se denegó el acceso al micrófono".** Permite el micrófono para tu dirección de Home Assistant en los ajustes del sitio del navegador, o para la app de Home Assistant en los ajustes del teléfono.
 
-**El mensaje se sube pero no suena nada.** Comprueba que el altavoz puede reproducir contenido desde Home Assistant: pruébalo desde **Multimedia** en la barra lateral. Si la tarjeta muestra un error después de "Enviando…", el altavoz rechazó el mensaje; el texto del error y el registro de Home Assistant indican el motivo.
+**El mensaje se sube pero no suena nada.** Comprueba que el altavoz puede reproducir contenido desde Home Assistant: pruébalo desde **Multimedia** en la barra lateral. Si la tarjeta muestra un error después de "Enviando…", el altavoz rechazó el mensaje. Pasa el cursor sobre el error para ver el motivo técnico, o revisa el registro de Home Assistant.
 
-**Los mensajes escritos muestran "Invalid options".** Tu motor no acepta el `tts_voice` o `tts_language` que configuraste. Bórralos para usar los valores del motor.
+**Los mensajes escritos muestran "No se pudo reproducir en los altavoces" con "Invalid options" en el detalle.** Tu motor no acepta el `tts_voice` o `tts_language` que configuraste. Bórralos para usar los valores del motor.
 
 **La reproducción empieza tarde.** Usa `transcoding: auto` con el perfil que corresponde a tus altavoces y ajusta `playback_start_delay`. La línea del registro *Processed Voice Announcement upload* muestra cuánto tardó cada paso.
 

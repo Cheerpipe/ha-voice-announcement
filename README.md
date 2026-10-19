@@ -12,9 +12,9 @@ Talk to your house. Press a button on your dashboard and say something, or type 
 ## What you get
 
 - **A dashboard card and a badge** that record a voice message from any browser or the Home Assistant app.
-- **Typed messages and quick messages.** Add a text-to-speech engine and the same card also reads typed messages aloud. Save the phrases you use most and send them with one tap.
+- **Typed messages and quick messages.** Add a text-to-speech engine and the same card also reads typed messages aloud. Save the phrases you use most, with an icon if you like, and send them with one tap.
 - **Four layouts:** a tile, a large vertical button for popups, a message box like Assist, and voice/text tabs.
-- **One speaker or many.** List several speakers and the card shows chips to choose where the message goes, with an *All* shortcut. You can allow several at once or only one at a time.
+- **One speaker or many.** List several speakers and the card shows chips to choose where the message goes, with an *All* shortcut. You can allow several at once or only one at a time, and give each speaker its own name, icon, and color.
 - **Hold to talk or tap to talk.** Keyboard friendly, too: hold Space or Enter, and press Enter to send text.
 - **Announcement mode.** On speakers that support it, music is lowered during the message and resumes afterwards.
 - **Plays on almost anything.** Recordings are converted to MP3 by default, so HomePods, Google and Nest speakers, Sonos, Music Assistant players and most other media players can play them.
@@ -57,7 +57,8 @@ The same settings in YAML:
 
 ```yaml
 type: custom:voice-announcement-card
-entity_id: media_player.kitchen
+entities:
+  - media_player.kitchen
 ```
 
 ### Layouts
@@ -73,22 +74,28 @@ entity_id: media_player.kitchen
 
 ### Choosing between several speakers
 
-Give the card a list of speakers and it shows a chip for each one. Tap the chips to decide where the next message goes. The card remembers your choice on each device.
+Give the card a list of speakers and it shows a chip for each one, in the same order. Tap the chips to decide where the next message goes. The card remembers your choice on each device.
 
 ```yaml
 type: custom:voice-announcement-card
-entity_id:
-  - media_player.kitchen
+entities:
+  - entity: media_player.kitchen
+    name: Kitchen
+    icon: mdi:silverware-fork-knife
+    color: orange
   - media_player.living_room
-  - media_player.bedroom
+  - entity: media_player.bedroom
+    icon: mdi:bed
 selection_mode: multiple   # or "single" to allow only one speaker at a time
 ```
+
+Each speaker can be just its entity id or have a `name`, `icon`, and `color` of its own. The color tints the chip when it's selected. In the editor, drag the speakers to change their order and use the pencil to customize one.
 
 With `selection_mode: multiple` you also get an **All** chip. With `single`, picking a speaker replaces the previous one.
 
 ### Typed messages and quick messages
 
-Choose a text-to-speech engine in **Text to speech** and the card gets a message box. Quick messages appear as chips you can send with one tap.
+Choose a text-to-speech engine in **Text to speech** and the card gets a message box. Quick messages appear as chips you can send with one tap; give them an icon if you like, and drag them in the editor to change their order.
 
 ```yaml
 type: custom:voice-announcement-card
@@ -99,9 +106,12 @@ entity_id:
 tts_engine: tts.home_assistant_cloud
 tts_language: en-US        # optional
 tts_voice: JennyNeural     # optional, only if your engine has voices
+tts_cache: true            # optional, reuse audio for repeated messages
 quick_messages:
-  - Dinner is ready
-  - I'm home
+  - message: Dinner is ready
+    icon: mdi:silverware-fork-knife
+  - message: I'm home
+    icon: mdi:home-import-outline
   - We're leaving in 5 minutes
 ```
 
@@ -122,9 +132,10 @@ cards:
     selection_mode: multiple
     tts_engine: tts.home_assistant_cloud
     quick_messages:
-      - Dinner is ready
+      - message: Dinner is ready
+        icon: mdi:silverware-fork-knife
       - Time to go
-    entity_id:
+    entities:
       - media_player.player1
       - media_player.player2
       - media_player.player3
@@ -150,7 +161,7 @@ tap_action:
       type: custom:voice-announcement-card
       layout: vertical
       tts_engine: tts.home_assistant_cloud
-      entity_id:
+      entities:
         - media_player.player1
         - media_player.player2
         - media_player.player3
@@ -166,21 +177,23 @@ The badge is a compact round button for the top of a view. It records voice and 
 
 ```yaml
 type: custom:voice-announcement-badge
-entity_id: media_player.kitchen
+entities:
+  - media_player.kitchen
 ```
 
 ## Options
 
 | Option | Default | What it does |
 | --- | --- | --- |
-| `entity_id` | required | One media player, or a list of them. |
+| `entities` | required | The speakers, in chip order. Each item is an entity id or has `entity`, `name`, `icon`, and `color`. The older `entity_id` (one id or a list) still works. |
 | `layout` | `horizontal` | `horizontal`, `vertical`, `composer`, or `tabs`. See [Layouts](#layouts). |
 | `recording_mode` | `hold` | `hold` records while you hold the button. `toggle` starts with one tap and sends with the next. |
 | `selection_mode` | `multiple` | With several speakers: `multiple` lets you pick any combination, `single` only one at a time. |
 | `tts_engine` | – | A text-to-speech entity, such as `tts.home_assistant_cloud`. Turns on typed and quick messages. |
-| `tts_language` | engine default | Language for typed messages, such as `es-ES`. |
+| `tts_language` | engine default | Language for typed messages, such as `es-ES`. Leave it out to use the language set in your text-to-speech integration. |
 | `tts_voice` | engine default | Voice name, for engines that offer several. |
-| `quick_messages` | – | A list of phrases to send with one tap. |
+| `tts_cache` | `true` | Reuses the generated audio when the same message is sent again, so it plays sooner. |
+| `quick_messages` | – | Phrases to send with one tap. Each item is a text or has `message` and `icon`. |
 | `active_color` | `red` | A Home Assistant color name (such as `blue` or `primary`) or a hex color. |
 | `microphone_icon` | `mdi:microphone` | Icon shown while idle and recording. |
 | `speaker_icon` | `mdi:volume-high` | Icon shown while sending and playing. |
@@ -213,7 +226,8 @@ Every part of the card can be restyled with [UIX](https://github.com/Lint-Free-T
 ```yaml
 type: custom:voice-announcement-card
 layout: tabs
-entity_id: media_player.kitchen
+entities:
+  - media_player.kitchen
 tts_engine: tts.home_assistant_cloud
 uix:
   style: |
@@ -240,8 +254,8 @@ uix:
 | `.button-frame`, `.record-button`, `.record-button ha-icon`, `.center-pulse` | The record button, its icon, and the glow while recording. |
 | `.text-zone`, `.status`, `.timer` | Status text and the secondary line (timer or speakers). |
 | `.compose-toggle` | Keyboard button of the horizontal layout. |
-| `.targets`, `.target`, `.target[aria-pressed="true"]` | Speaker chips and the selected ones. |
-| `.quick`, `.quick-message` | Quick message chips. |
+| `.targets`, `.target`, `.target[aria-pressed="true"]`, `.target[data-target="media_player.kitchen"]`, `.target-icon` | Speaker chips, the selected ones, one specific speaker, and its icon. |
+| `.quick`, `.quick-message`, `.quick-message ha-icon` | Quick message chips and their icons. |
 | `.composer`, `.message`, `.send-button` | Message box, text field, and send button. |
 
 Every element also has a `part` with the same name (for example `part="send"`), and the badge uses `.record-button` too.
@@ -276,8 +290,8 @@ These work from UIX, card-mod, or a theme:
 | `--voice-announcement-label-color`, `-label-font-size`, `-label-font-weight` | Status text. |
 | `--voice-announcement-timer-color`, `-timer-font-size`, `-timer-display` | Secondary line. |
 | `--voice-announcement-card-padding`, `-card-gap`, `-section-gap` | Spacing. |
-| `--voice-announcement-targets-justify`, `-chip-border-radius` | Speaker chips. |
-| `--voice-announcement-quick-background`, `-quick-border-radius`, `-quick-justify` | Quick message chips. |
+| `--voice-announcement-targets-justify`, `-chip-border-radius`, `-target-color` | Speaker chips (`-target-color` is set per speaker by its `color`). |
+| `--voice-announcement-quick-background`, `-quick-border-radius`, `-quick-justify`, `-quick-icon-color` | Quick message chips. |
 | `--voice-announcement-input-background`, `-input-border`, `-input-border-radius` | Message box. |
 | `--voice-announcement-send-color`, `-send-icon-color` | Send button. |
 | `--voice-announcement-tabs-background`, `-tabs-border-radius`, `-tab-selected-background` | Tabs. |
@@ -309,9 +323,9 @@ data:
 
 **"Microphone access was denied".** Allow the microphone for your Home Assistant address in the browser's site settings, or for the Home Assistant app in your phone's settings.
 
-**The message uploads but nothing plays.** Check that the speaker can play media from Home Assistant: try it from **Media** in the sidebar. If the card shows an error after "Sending…", the speaker refused the message; the error text and the Home Assistant log tell you why.
+**The message uploads but nothing plays.** Check that the speaker can play media from Home Assistant: try it from **Media** in the sidebar. If the card shows an error after "Sending…", the speaker refused the message. Hover over the error to see the technical reason, or check the Home Assistant log.
 
-**Typed messages show "Invalid options".** Your engine doesn't accept the `tts_voice` or `tts_language` you set. Clear them to use the engine's defaults.
+**Typed messages show "Couldn't play on the speakers" with "Invalid options" in the tooltip.** Your engine doesn't accept the `tts_voice` or `tts_language` you set. Clear them to use the engine's defaults.
 
 **Playback starts late.** Set `transcoding: auto` with the speaker profile that matches your speakers, and adjust `playback_start_delay`. The log line *Processed Voice Announcement upload* shows how long each step took.
 
