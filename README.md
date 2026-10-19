@@ -20,6 +20,7 @@ Talk to your house. Press a button on your dashboard and say something, or type 
 - **Plays on almost anything.** Recordings are converted to MP3 by default, so HomePods, Google and Nest speakers, Sonos, Music Assistant players and most other media players can play them.
 - **Restyle everything** with [UIX](https://github.com/Lint-Free-Technology/uix), card-mod, or CSS variables.
 - **A visual editor** that looks and works like the built-in Home Assistant card editors, in English and Spanish.
+- **Entities for automations and diagnostics.** See what is being received, processed or played and on which speaker, react to new recordings, and spot problems such as a missing ffmpeg.
 - **Private by default.** Uploads require a signed-in Home Assistant user who is allowed to control the chosen speakers. Recordings are deleted automatically after 7 days.
 
 ## Requirements
@@ -301,7 +302,26 @@ Without UIX you can also use `button_css`, `status_css`, `timer_css`, and `text_
 
 ## Recordings and services
 
-Recordings are stored in `/config/voice_announcement`. The newest 100 are kept for up to 7 days, and you can browse them under **Media → Voice Announcement**. Typed messages are handled by your text-to-speech integration and aren't stored here. Administrators can also use two actions:
+Recordings are stored in `/config/voice_announcement`. The newest 100 are kept for up to 7 days, and you can browse them under **Media → Voice Announcement**. Typed messages are handled by your text-to-speech integration and aren't stored here. Anyone can use `voice_announcement.play` to replay a recording (`last` plays the newest one) or read a message aloud. It accepts entities, devices, areas, floors and labels as targets:
+
+```yaml
+action: voice_announcement.play
+target:
+  area_id: kitchen
+data:
+  recording_id: last
+```
+
+```yaml
+action: voice_announcement.play
+target:
+  entity_id: media_player.kitchen
+data:
+  message: Dinner is ready
+  tts_engine: tts.home_assistant_cloud
+```
+
+Administrators can also use two more actions:
 
 ```yaml
 action: voice_announcement.cleanup
@@ -313,6 +333,56 @@ data:
 action: voice_announcement.delete_recording
 data:
   recording_id: 0123456789abcdef0123456789abcdef
+```
+
+## Entities
+
+The integration adds a **Voice Announcement** device with these entities. Entity IDs below are the defaults for an English installation.
+
+**Activity**
+
+| Entity | What it shows |
+|---|---|
+| `sensor.voice_announcement_status` | `idle`, `receiving`, `processing` or `playing`; the most advanced phase wins when several things happen at once. Attributes: `targets`, `type` (`voice` or `tts`), `user`, `recording_id`, `started_at` and `active_jobs` with every upload and announcement in progress. |
+| `binary_sensor.voice_announcement_receiving` | On while an upload is arriving. `targets` says where it is going. |
+| `binary_sensor.voice_announcement_processing` | On while an upload is validated and converted. |
+| `binary_sensor.voice_announcement_playing` | On while an announcement plays anywhere. |
+| `binary_sensor.voice_announcement_playing_on_<speaker>` | One per speaker that has received an announcement; on while it plays there. |
+
+**Recordings and announcements**
+
+| Entity | What it shows |
+|---|---|
+| `sensor.voice_announcement_last_recording` | When the last recording was made, with its `recording_id`, `media_source_id`, `url`, `targets`, `user` and `duration`. |
+| `sensor.voice_announcement_last_recording_duration` | Its length in seconds. |
+| `sensor.voice_announcement_recordings_today` | Recordings since midnight. |
+| `sensor.voice_announcement_last_announcement` | When the last announcement started, with its type, speakers, result (`ok`, `partial` or `failed`) and why it ended. |
+| `event.voice_announcement_recording` | Fires `recorded`, `deleted`, `cleanup` and `failed` (upload failed). |
+| `event.voice_announcement_announcement` | Fires `started`, `finished` and `failed`. |
+| `button.voice_announcement_clean_up_old_recordings` | Deletes recordings older than 7 days. |
+| `button.voice_announcement_delete_last_recording` | Deletes the newest recording. |
+
+**Diagnostics**: stored recordings, storage used, oldest recording, last upload status (with the reason when it failed), failed uploads, last processing time (with each step's timing), transcoded uploads (%), active uploads, last cleanup, failed playbacks, and two problem sensors that turn on when **FFmpeg** or **FFprobe** is missing.
+
+### When a message counts as playing
+
+Announcements sent by the card, or by the `voice_announcement.play` action, are tracked from the moment the speakers are asked to play until the message's length has passed. Speakers that report what they play end it earlier when they stop, or later if they are still playing it (up to one extra minute). Announcements sent straight to `media_player.play_media` or `tts.speak` aren't tracked.
+
+### Events for automations
+
+Besides the event entities, each step fires an event you can use as a trigger: `voice_announcement_receiving_started`, `voice_announcement_processing_started`, `voice_announcement_recorded`, `voice_announcement_upload_failed`, `voice_announcement_deleted`, `voice_announcement_cleanup`, `voice_announcement_playback_started`, `voice_announcement_playback_finished` and `voice_announcement_playback_failed`. They carry the `recording_id`, `targets`, `type` and `user` when they apply.
+
+```yaml
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.voice_announcement_playing_on_living_room
+    to: "on"
+actions:
+  - action: media_player.volume_mute
+    target:
+      entity_id: media_player.living_room_tv
+    data:
+      is_volume_muted: true
 ```
 
 ## Troubleshooting

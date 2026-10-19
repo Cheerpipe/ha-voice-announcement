@@ -15,6 +15,8 @@ DATA_HTTP_REGISTERED = "http_registered"
 DATA_STATIC_REGISTERED = "static_registered"
 DATA_UPLOAD_SEMAPHORE = "upload_semaphore"
 DATA_UPLOAD_RATE_LIMIT = "upload_rate_limit"
+DATA_ACTIVITY = "activity"
+DATA_VERSION = "version"
 
 STORAGE_VERSION = 1
 STORAGE_KEY = f"{DOMAIN}.recordings"
@@ -42,6 +44,52 @@ KEEP_ORIGINAL_UPLOADS = False
 DEFAULT_OUTPUT_SAMPLE_RATE = "24000"
 DEFAULT_OUTPUT_BITRATE = "64k"
 DEFAULT_OUTPUT_CHANNELS = 1
+MAX_TARGET_ENTITIES = 20
+MAX_MESSAGE_LENGTH = 300
+# Rough speaking rate used to estimate how long a text-to-speech message lasts.
+TTS_CHARS_PER_SECOND = 14
+# Extra time after the expected end before a speaker is considered done.
+PLAYBACK_GRACE_SECONDS = 3
+# Upper bound for speakers that keep reporting playback after the expected end.
+PLAYBACK_MAX_OVERRUN_SECONDS = 60
+FFMPEG_CHECK_INTERVAL_SECONDS = 3600
+
+SIGNAL_ACTIVITY_UPDATED = f"{DOMAIN}_activity_updated"
+SIGNAL_SPEAKER_ADDED = f"{DOMAIN}_speaker_added"
+SIGNAL_EVENT = f"{DOMAIN}_event"
+
+# Event bus types fired for automations.
+EVENT_RECEIVING_STARTED = f"{DOMAIN}_receiving_started"
+EVENT_PROCESSING_STARTED = f"{DOMAIN}_processing_started"
+EVENT_RECORDED = f"{DOMAIN}_recorded"
+EVENT_UPLOAD_FAILED = f"{DOMAIN}_upload_failed"
+EVENT_DELETED = f"{DOMAIN}_deleted"
+EVENT_CLEANUP = f"{DOMAIN}_cleanup"
+EVENT_PLAYBACK_STARTED = f"{DOMAIN}_playback_started"
+EVENT_PLAYBACK_FINISHED = f"{DOMAIN}_playback_finished"
+EVENT_PLAYBACK_FAILED = f"{DOMAIN}_playback_failed"
+
+PHASE_IDLE = "idle"
+PHASE_RECEIVING = "receiving"
+PHASE_PROCESSING = "processing"
+PHASE_PLAYING = "playing"
+# Most advanced phase first: it is the one the status sensor reports.
+PHASES = (PHASE_PLAYING, PHASE_PROCESSING, PHASE_RECEIVING, PHASE_IDLE)
+
+TYPE_VOICE = "voice"
+TYPE_TTS = "tts"
+
+UPLOAD_STATUSES = (
+    "ok",
+    "rejected_too_large",
+    "rate_limited",
+    "invalid_audio",
+    "invalid_request",
+    "conversion_failed",
+    "unavailable",
+    "unauthorized",
+    "error",
+)
 
 SUPPORTED_MIME_TYPES = {
     "audio/webm",

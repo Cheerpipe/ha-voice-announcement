@@ -11,6 +11,40 @@
     }
   },
   "services": {
+    "play": {
+      "name": "Play announcement",
+      "description": "Play a stored recording or read a message aloud on media players.",
+      "fields": {
+        "recording_id": {
+          "name": "Recording ID",
+          "description": "The recording to play, or \"last\" for the most recent one."
+        },
+        "message": {
+          "name": "Message",
+          "description": "Text read aloud with the text-to-speech engine. Use it instead of a recording."
+        },
+        "tts_engine": {
+          "name": "Text-to-speech engine",
+          "description": "Engine that reads the message."
+        },
+        "language": {
+          "name": "Language",
+          "description": "Optional language for the message."
+        },
+        "voice": {
+          "name": "Voice",
+          "description": "Optional voice name exactly as the engine lists it."
+        },
+        "cache": {
+          "name": "Cache generated audio",
+          "description": "Reuse the audio when the same message is sent again."
+        },
+        "announce": {
+          "name": "Announcement mode",
+          "description": "On speakers that support it, lower the music during the announcement and resume it afterwards."
+        }
+      }
+    },
     "cleanup": {
       "name": "Cleanup recordings",
       "description": "Delete stored voice announcement recordings older than the configured retention period.",
@@ -30,6 +64,144 @@
           "description": "The recording identifier returned by the upload endpoint."
         }
       }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "receiving": {
+        "name": "Receiving"
+      },
+      "processing": {
+        "name": "Processing"
+      },
+      "playing": {
+        "name": "Playing"
+      },
+      "speaker_playing": {
+        "name": "Playing on {speaker}"
+      },
+      "ffmpeg": {
+        "name": "FFmpeg"
+      },
+      "ffprobe": {
+        "name": "FFprobe"
+      }
+    },
+    "button": {
+      "cleanup": {
+        "name": "Clean up old recordings"
+      },
+      "delete_last": {
+        "name": "Delete last recording"
+      }
+    },
+    "event": {
+      "recording": {
+        "name": "Recording",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "recorded": "Recorded",
+              "deleted": "Deleted",
+              "cleanup": "Cleanup",
+              "failed": "Upload failed"
+            }
+          }
+        }
+      },
+      "announcement": {
+        "name": "Announcement",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "started": "Started",
+              "finished": "Finished",
+              "failed": "Failed"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "idle": "Idle",
+          "receiving": "Receiving",
+          "processing": "Processing",
+          "playing": "Playing"
+        }
+      },
+      "last_recording": {
+        "name": "Last recording"
+      },
+      "last_duration": {
+        "name": "Last recording duration"
+      },
+      "recordings_today": {
+        "name": "Recordings today"
+      },
+      "last_announcement": {
+        "name": "Last announcement"
+      },
+      "stored_recordings": {
+        "name": "Stored recordings"
+      },
+      "storage_used": {
+        "name": "Storage used"
+      },
+      "oldest_recording": {
+        "name": "Oldest recording"
+      },
+      "last_upload_status": {
+        "name": "Last upload status",
+        "state": {
+          "ok": "OK",
+          "rejected_too_large": "Too large",
+          "rate_limited": "Rate limited",
+          "invalid_audio": "Invalid audio",
+          "invalid_request": "Invalid request",
+          "conversion_failed": "Conversion failed",
+          "unavailable": "Unavailable",
+          "unauthorized": "Unauthorized",
+          "error": "Error"
+        }
+      },
+      "failed_uploads": {
+        "name": "Failed uploads"
+      },
+      "last_processing_time": {
+        "name": "Last processing time"
+      },
+      "transcoded_ratio": {
+        "name": "Transcoded uploads"
+      },
+      "active_uploads": {
+        "name": "Active uploads"
+      },
+      "last_cleanup": {
+        "name": "Last cleanup"
+      },
+      "failed_playbacks": {
+        "name": "Failed playbacks"
+      }
+    }
+  },
+  "exceptions": {
+    "no_targets": {
+      "message": "Choose at least one media player."
+    },
+    "too_many_targets": {
+      "message": "Choose at most {max} media players."
+    },
+    "tts_engine_required": {
+      "message": "A text-to-speech engine is required to play a message."
+    },
+    "recording_not_found": {
+      "message": "Recording {recording_id} was not found."
+    },
+    "playback_failed": {
+      "message": "Couldn't play the announcement on {targets}: {error}"
     }
   }
 }

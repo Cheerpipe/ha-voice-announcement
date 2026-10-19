@@ -20,6 +20,7 @@ Háblale a tu casa. Presiona un botón en tu dashboard y di algo, o escribe un m
 - **Suena en casi cualquier parlante.** Por defecto las grabaciones se convierten a MP3, así que HomePod, Google y Nest, Sonos, Music Assistant y la mayoría de los reproductores pueden reproducirlas.
 - **Personaliza todo** con [UIX](https://github.com/Lint-Free-Technology/uix), card-mod o variables CSS.
 - **Un editor visual** que se ve y funciona como los editores de tarjetas nativos de Home Assistant, en español e inglés.
+- **Entidades para automatizaciones y diagnóstico.** Muestran qué se está recibiendo, procesando o reproduciendo y en qué altavoz, permiten reaccionar a grabaciones nuevas y avisan de problemas, como que falte ffmpeg.
 - **Privado por defecto.** Para subir audio hace falta un usuario de Home Assistant con permiso para controlar los altavoces elegidos. Las grabaciones se borran solas a los 7 días.
 
 ## Requisitos
@@ -250,7 +251,26 @@ La lista completa de elementos, estados y variables CSS está en el [README en i
 
 ## Grabaciones y acciones
 
-Las grabaciones se guardan en `/config/voice_announcement`. Se conservan las 100 más recientes durante un máximo de 7 días, y puedes verlas en **Multimedia → Voice Announcement**. Los mensajes escritos los maneja tu integración de texto a voz y no se guardan aquí. Los administradores también tienen dos acciones:
+Las grabaciones se guardan en `/config/voice_announcement`. Se conservan las 100 más recientes durante un máximo de 7 días, y puedes verlas en **Multimedia → Voice Announcement**. Los mensajes escritos los maneja tu integración de texto a voz y no se guardan aquí. Cualquier usuario puede usar `voice_announcement.play` para repetir una grabación (`last` reproduce la más reciente) o leer un mensaje en voz alta. Acepta entidades, dispositivos, áreas, plantas y etiquetas como destino:
+
+```yaml
+action: voice_announcement.play
+target:
+  area_id: cocina
+data:
+  recording_id: last
+```
+
+```yaml
+action: voice_announcement.play
+target:
+  entity_id: media_player.cocina
+data:
+  message: La cena está lista
+  tts_engine: tts.home_assistant_cloud
+```
+
+Los administradores tienen además dos acciones:
 
 ```yaml
 action: voice_announcement.cleanup
@@ -262,6 +282,56 @@ data:
 action: voice_announcement.delete_recording
 data:
   recording_id: 0123456789abcdef0123456789abcdef
+```
+
+## Entidades
+
+La integración agrega un dispositivo **Voice Announcement** con estas entidades. Los IDs de abajo son los que se generan en una instalación en inglés; en español los nombres se traducen y los IDs pueden cambiar.
+
+**Actividad**
+
+| Entidad | Qué muestra |
+|---|---|
+| `sensor.voice_announcement_status` | `idle`, `receiving`, `processing` o `playing`; si pasan varias cosas a la vez gana la fase más avanzada. Atributos: `targets`, `type` (`voice` o `tts`), `user`, `recording_id`, `started_at` y `active_jobs` con cada subida y anuncio en curso. |
+| `binary_sensor.voice_announcement_receiving` | Encendido mientras llega una subida. `targets` dice a dónde va. |
+| `binary_sensor.voice_announcement_processing` | Encendido mientras se valida y convierte una subida. |
+| `binary_sensor.voice_announcement_playing` | Encendido mientras suena un anuncio en cualquier altavoz. |
+| `binary_sensor.voice_announcement_playing_on_<altavoz>` | Uno por cada altavoz que haya recibido un anuncio; encendido mientras suena en él. |
+
+**Grabaciones y anuncios**
+
+| Entidad | Qué muestra |
+|---|---|
+| `sensor.voice_announcement_last_recording` | Cuándo se hizo la última grabación, con su `recording_id`, `media_source_id`, `url`, `targets`, `user` y `duration`. |
+| `sensor.voice_announcement_last_recording_duration` | Su duración en segundos. |
+| `sensor.voice_announcement_recordings_today` | Grabaciones desde la medianoche. |
+| `sensor.voice_announcement_last_announcement` | Cuándo empezó el último anuncio, con su tipo, altavoces, resultado (`ok`, `partial` o `failed`) y por qué terminó. |
+| `event.voice_announcement_recording` | Dispara `recorded`, `deleted`, `cleanup` y `failed` (subida fallida). |
+| `event.voice_announcement_announcement` | Dispara `started`, `finished` y `failed`. |
+| `button.voice_announcement_clean_up_old_recordings` | Elimina las grabaciones de más de 7 días. |
+| `button.voice_announcement_delete_last_recording` | Elimina la grabación más reciente. |
+
+**Diagnóstico**: grabaciones almacenadas, espacio usado, grabación más antigua, estado de la última subida (con el motivo si falló), subidas fallidas, tiempo del último procesamiento (con lo que tardó cada paso), subidas convertidas (%), subidas en curso, última limpieza, reproducciones fallidas, y dos sensores de problema que se encienden si falta **FFmpeg** o **FFprobe**.
+
+### Cuándo se considera que un mensaje está sonando
+
+Los anuncios que envía la tarjeta, o la acción `voice_announcement.play`, se siguen desde que se pide a los altavoces que reproduzcan hasta que pasa la duración del mensaje. Los altavoces que informan lo que reproducen lo terminan antes si se detienen, o después si siguen reproduciéndolo (hasta un minuto extra). Los anuncios enviados directamente con `media_player.play_media` o `tts.speak` no se siguen.
+
+### Eventos para automatizaciones
+
+Además de las entidades de evento, cada paso dispara un evento que puedes usar como disparador: `voice_announcement_receiving_started`, `voice_announcement_processing_started`, `voice_announcement_recorded`, `voice_announcement_upload_failed`, `voice_announcement_deleted`, `voice_announcement_cleanup`, `voice_announcement_playback_started`, `voice_announcement_playback_finished` y `voice_announcement_playback_failed`. Incluyen `recording_id`, `targets`, `type` y `user` cuando corresponde.
+
+```yaml
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.voice_announcement_playing_on_living_room
+    to: "on"
+actions:
+  - action: media_player.volume_mute
+    target:
+      entity_id: media_player.living_room_tv
+    data:
+      is_volume_muted: true
 ```
 
 ## Solución de problemas

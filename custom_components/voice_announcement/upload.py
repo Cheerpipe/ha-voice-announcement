@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import Callable
 from datetime import UTC, datetime
 import json
 import logging
@@ -19,6 +20,7 @@ from homeassistant.components.http import KEY_HASS_USER, HomeAssistantView
 from homeassistant.core import HomeAssistant, valid_entity_id
 from homeassistant.exceptions import Unauthorized
 
+from .activity import VoiceAnnouncementActivity
 from .audio_policy import (
     normalize_codec_name,
     normalize_mime_type,
@@ -26,12 +28,14 @@ from .audio_policy import (
     resolve_audio_policy,
 )
 from .const import (
+    DATA_ACTIVITY,
     DATA_STORE,
     DATA_UPLOAD_RATE_LIMIT,
     DATA_UPLOAD_SEMAPHORE,
     DEFAULT_MAX_DURATION,
     DOMAIN,
     KEEP_ORIGINAL_UPLOADS,
+    MAX_TARGET_ENTITIES,
     MAX_UPLOAD_BYTES,
     MAX_UPLOADS_PER_WINDOW,
     MEDIA_SOURCE_URI_PREFIX,
@@ -57,7 +61,6 @@ _SUPPORTED_SOURCE_CODECS: dict[str, set[str]] = {
     "audio/wav": {"pcm"},
 }
 _MAX_METADATA_BYTES = 8192
-_MAX_TARGET_ENTITIES = 20
 _SIGNATURE_BYTES = 32
 
 
@@ -73,7 +76,46 @@ class VoiceAnnouncementUploadView(HomeAssistantView):
         self.hass = hass
 
     async def post(self, request: web.Request) -> web.Response:
-        """Handle an audio upload."""
+        """Handle an audio upload and record its outcome."""
+        activity: VoiceAnnouncementActivity = self.hass.data[DOMAIN][DATA_ACTIVITY]
+        recording_id = uuid4().hex
+        try:
+            return await self._async_handle_upload(request, activity, recording_id)
+        except Unauthorized:
+            activity.async_upload_failed(
+                recording_id,
+                "unauthorized",
+                http_status=401,
+                detail=None,
+                user=request.get(KEY_HASS_USER),
+            )
+            raise
+        except web.HTTPException as err:
+            activity.async_upload_failed(
+                recording_id,
+                _upload_status_for_http_error(err),
+                http_status=err.status,
+                detail=_truncate_text(getattr(err, "text", None), 160),
+                user=request.get(KEY_HASS_USER),
+            )
+            raise
+        except Exception:
+            activity.async_upload_failed(
+                recording_id,
+                "error",
+                http_status=500,
+                detail=None,
+                user=request.get(KEY_HASS_USER),
+            )
+            raise
+
+    async def _async_handle_upload(
+        self,
+        request: web.Request,
+        activity: VoiceAnnouncementActivity,
+        recording_id: str,
+    ) -> web.Response:
+        """Receive an audio upload."""
         started = perf_counter()
         remote = request.remote
         if request.content_length and request.content_length > MAX_UPLOAD_BYTES:
@@ -110,10 +152,15 @@ class VoiceAnnouncementUploadView(HomeAssistantView):
                 _context_string(user_id=user_id, remote=remote),
             )
         async with semaphore:
-            recording_id = uuid4().hex
+            activity.async_upload_started(recording_id, user)
             temp_path = store.build_temp_file_path(recording_id)
+
+            def _on_field(name: str, value: str) -> None:
+                if name == "entity_id":
+                    activity.async_upload_targets(recording_id, _parse_targets(value))
+
             try:
-                upload = await _read_multipart_upload(request, store, temp_path)
+                upload = await _read_multipart_upload(request, store, temp_path, _on_field)
             except Unauthorized:
                 raise
             except web.HTTPException as err:
@@ -147,6 +194,7 @@ class VoiceAnnouncementUploadView(HomeAssistantView):
                 upload_size=upload["size"],
                 read_ms=round((perf_counter() - started) * 1000),
                 mode="classic",
+                activity=activity,
             )
 
 
@@ -161,6 +209,7 @@ async def async_finalize_recording_upload(
     upload_size: int,
     read_ms: int = 0,
     mode: str = "classic",
+    activity: VoiceAnnouncementActivity | None = None,
 ) -> web.Response:
     """Validate, normalize and persist an uploaded recording."""
     started = perf_counter()
@@ -179,6 +228,8 @@ async def async_finalize_recording_upload(
         entity_id = ",".join(entity_ids)
         for target in entity_ids:
             _authorize_user_for_entity(user, target)
+        if activity is not None:
+            activity.async_processing_started(recording_id, entity_ids)
 
         policy = resolve_audio_policy(_parse_audio_policy_value(metadata.get("audio_policy")))
         declared_mime_type = normalize_mime_type(metadata.get("mime_type"))
@@ -395,33 +446,32 @@ async def async_finalize_recording_upload(
         process_done = perf_counter()
 
         now = datetime.now(UTC).isoformat()
-        await store.async_add_recording(
-            recording_id,
-            {
-                "id": recording_id,
-                "created_at": now,
-                "duration": duration,
-                "entity_id": entity_id,
-                "uploaded_by": user_id,
-                "source_mime_type": declared_mime_type,
-                "detected_mime_type": detected_mime_type,
-                "validated_mime_type": validated_mime_type,
-                "source_codec": source_codec,
-                "original_filename": _truncate_text(metadata.get("filename")),
-                "original_path": str(original_path) if original_path else None,
-                "media_path": str(media_path),
-                "media_mime_type": media_mime_type,
-                "media_codec": media_codec,
-                "media_extension": media_extension,
-                "size": upload_size,
-                "payload_version": _truncate_text(metadata.get("payload_version")),
-                "input_profile": policy["input_profile"],
-                "output_profile": policy["output_profile"],
-                "transcoding": policy["transcoding"],
-                "was_transcoded": was_transcoded,
-                "upload_mode": mode,
-            },
-        )
+        recording = {
+            "id": recording_id,
+            "created_at": now,
+            "duration": duration,
+            "entity_id": entity_id,
+            "uploaded_by": user_id,
+            "uploaded_by_name": _truncate_text(getattr(user, "name", None)),
+            "source_mime_type": declared_mime_type,
+            "detected_mime_type": detected_mime_type,
+            "validated_mime_type": validated_mime_type,
+            "source_codec": source_codec,
+            "original_filename": _truncate_text(metadata.get("filename")),
+            "original_path": str(original_path) if original_path else None,
+            "media_path": str(media_path),
+            "media_mime_type": media_mime_type,
+            "media_codec": media_codec,
+            "media_extension": media_extension,
+            "size": upload_size,
+            "payload_version": _truncate_text(metadata.get("payload_version")),
+            "input_profile": policy["input_profile"],
+            "output_profile": policy["output_profile"],
+            "transcoding": policy["transcoding"],
+            "was_transcoded": was_transcoded,
+            "upload_mode": mode,
+        }
+        await store.async_add_recording(recording_id, recording)
         save_done = perf_counter()
         recording_saved = True
 
@@ -435,6 +485,8 @@ async def async_finalize_recording_upload(
             "save_ms": save_ms,
             "total_ms": max(0, read_ms) + probe_ms + process_ms + save_ms,
         }
+        if activity is not None:
+            activity.async_upload_succeeded(recording_id, recording, timings, user)
 
         _LOGGER.info(
             "Processed Voice Announcement upload successfully (%s)",
@@ -576,7 +628,10 @@ class VoiceAnnouncementMediaView(HomeAssistantView):
 
 
 async def _read_multipart_upload(
-    request: web.Request, store: VoiceAnnouncementStore, temp_path: Path
+    request: web.Request,
+    store: VoiceAnnouncementStore,
+    temp_path: Path,
+    on_field: Callable[[str, str], None] | None = None,
 ) -> dict[str, Any]:
     """Read multipart upload data with hard byte limits and store the audio."""
     if not str(request.content_type or "").startswith("multipart/"):
@@ -601,6 +656,8 @@ async def _read_multipart_upload(
             if value is None:
                 raise web.HTTPBadRequest(text=f"Form field {part.name} is too large")
             metadata[part.name] = value.decode("utf-8", errors="replace").strip()
+            if on_field is not None:
+                on_field(part.name, metadata[part.name])
 
     if not audio:
         raise web.HTTPBadRequest(text="Missing audio file")
@@ -815,12 +872,39 @@ def _validate_entity_ids(value: Any) -> list[str]:
     entity_ids = list(dict.fromkeys(item.strip() for item in items if item.strip()))
     if not entity_ids:
         raise web.HTTPBadRequest(text="Missing entity_id")
-    if len(entity_ids) > _MAX_TARGET_ENTITIES:
+    if len(entity_ids) > MAX_TARGET_ENTITIES:
         raise web.HTTPBadRequest(text="Too many target media players")
     for entity_id in entity_ids:
         if not entity_id.startswith("media_player.") or not valid_entity_id(entity_id):
             raise web.HTTPBadRequest(text="entity_id must be a media_player")
     return entity_ids
+
+
+def _parse_targets(value: Any) -> list[str]:
+    """Return the requested targets for status reporting, or none if they are invalid."""
+    try:
+        return _validate_entity_ids(value)
+    except web.HTTPBadRequest:
+        return []
+
+
+def _upload_status_for_http_error(err: web.HTTPException) -> str:
+    """Map an upload HTTP error to the status reported by the diagnostics sensor."""
+    if err.status == 413:
+        return "rejected_too_large"
+    if err.status == 429:
+        return "rate_limited"
+    if err.status == 415:
+        return "invalid_audio"
+    if err.status in (401, 403):
+        return "unauthorized"
+    if err.status == 503:
+        return "unavailable"
+    if err.status == 400 and getattr(err, "text", None) == "Audio processing failed":
+        return "conversion_failed"
+    if err.status >= 500:
+        return "error"
+    return "invalid_request"
 
 
 def _http_error_for_probe_failure(err: AudioProbeError) -> web.HTTPException:

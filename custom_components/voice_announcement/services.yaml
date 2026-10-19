@@ -1,3 +1,44 @@
+play:
+  target:
+    entity:
+      domain: media_player
+  fields:
+    recording_id:
+      required: false
+      example: last
+      selector:
+        text: {}
+    message:
+      required: false
+      example: Dinner is ready
+      selector:
+        text:
+          multiline: true
+    tts_engine:
+      required: false
+      selector:
+        entity:
+          filter:
+            domain: tts
+    language:
+      required: false
+      selector:
+        text: {}
+    voice:
+      required: false
+      selector:
+        text: {}
+    cache:
+      required: false
+      default: true
+      selector:
+        boolean: {}
+    announce:
+      required: false
+      default: true
+      selector:
+        boolean: {}
+
 cleanup:
   fields:
     keep_days:

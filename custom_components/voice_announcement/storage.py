@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from datetime import UTC, datetime, timedelta
 import logging
 from pathlib import Path
 import shutil
 from typing import Any
 
-from homeassistant.core import HomeAssistant
+from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.helpers.storage import Store
 
 from .const import (
@@ -22,6 +22,8 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+type StoreListener = Callable[[str, dict[str, Any]], None]
 
 
 class VoiceAnnouncementStore:
@@ -36,12 +38,62 @@ class VoiceAnnouncementStore:
         self.media_path = self.base_path / "media"
         self._store: Store[dict[str, Any]] = Store(hass, STORAGE_VERSION, STORAGE_KEY)
         self._recordings: dict[str, dict[str, Any]] = {}
+        self._speakers: list[str] = []
+        self._listeners: list[StoreListener] = []
         self._mutation_lock = asyncio.Lock()
 
     @property
     def recordings(self) -> dict[str, dict[str, Any]]:
         """Return all known recordings."""
         return self._recordings
+
+    @property
+    def speakers(self) -> list[str]:
+        """Return the media players that have received announcements."""
+        return self._speakers
+
+    @callback
+    def async_add_listener(self, listener: StoreListener) -> CALLBACK_TYPE:
+        """Call listener(kind, data) when recordings are added, deleted or cleaned up."""
+        self._listeners.append(listener)
+
+        @callback
+        def _remove() -> None:
+            if listener in self._listeners:
+                self._listeners.remove(listener)
+
+        return _remove
+
+    @callback
+    def _notify(self, kind: str, data: dict[str, Any]) -> None:
+        for listener in list(self._listeners):
+            listener(kind, data)
+
+    def latest_recording(self) -> dict[str, Any] | None:
+        """Return the most recently created recording."""
+        if not self._recordings:
+            return None
+        return max(self._recordings.values(), key=self._created_at_key)
+
+    def oldest_recording(self) -> dict[str, Any] | None:
+        """Return the oldest stored recording."""
+        if not self._recordings:
+            return None
+        return min(self._recordings.values(), key=self._created_at_key)
+
+    async def async_add_speakers(self, entity_ids: Iterable[str]) -> list[str]:
+        """Remember target media players and return the ones seen for the first time."""
+        added = [
+            entity_id for entity_id in dict.fromkeys(entity_ids) if entity_id not in self._speakers
+        ]
+        if added:
+            self._speakers.extend(added)
+            await self.async_save()
+        return added
+
+    async def async_get_storage_bytes(self) -> int:
+        """Return the disk space used by stored recordings."""
+        return await self.hass.async_add_executor_job(self._storage_bytes)
 
     async def async_load(self) -> None:
         """Load metadata and ensure directories exist."""
@@ -50,6 +102,9 @@ class VoiceAnnouncementStore:
         data = await self._store.async_load()
         if isinstance(data, dict):
             self._recordings = dict(data.get("recordings", {}))
+            self._speakers = [
+                speaker for speaker in data.get("speakers", []) if isinstance(speaker, str)
+            ]
         _LOGGER.debug(
             "Loaded Voice Announcement store (recordings=%s, deleted_temp_files=%s)",
             len(self._recordings),
@@ -59,7 +114,7 @@ class VoiceAnnouncementStore:
 
     async def async_save(self) -> None:
         """Persist metadata."""
-        await self._store.async_save({"recordings": self._recordings})
+        await self._store.async_save({"recordings": self._recordings, "speakers": self._speakers})
 
     async def async_write_bytes(self, path: Path, data: bytes) -> None:
         """Write bytes outside the event loop."""
@@ -94,6 +149,7 @@ class VoiceAnnouncementStore:
                 recording_id,
                 metadata.get("entity_id"),
             )
+            self._notify("added", metadata)
             await self._async_enforce_limits_locked()
             await self.async_save()
 
@@ -143,6 +199,7 @@ class VoiceAnnouncementStore:
             metadata.get("entity_id"),
             reason,
         )
+        self._notify("deleted", {**metadata, "reason": reason})
         return True
 
     async def async_cleanup(
@@ -157,6 +214,7 @@ class VoiceAnnouncementStore:
             if deleted:
                 await self.async_save()
 
+        self._notify("cleanup", {"deleted": deleted, "keep_days": keep_days, "trigger": trigger})
         if deleted:
             level = logging.INFO if trigger == "automatic" else logging.DEBUG
             _LOGGER.log(
@@ -205,6 +263,10 @@ class VoiceAnnouncementStore:
         deleted = await self._async_cleanup_locked(AUTO_CLEANUP_KEEP_DAYS)
         deleted += await self._async_trim_to_max_recordings_locked(MAX_STORED_RECORDINGS)
         if deleted:
+            self._notify(
+                "cleanup",
+                {"deleted": deleted, "keep_days": AUTO_CLEANUP_KEEP_DAYS, "trigger": "automatic"},
+            )
             _LOGGER.debug(
                 "Voice Announcement automatic storage enforcement completed with deletions "
                 "(deleted=%s, keep_days=%s, max_recordings=%s)",
@@ -232,10 +294,7 @@ class VoiceAnnouncementStore:
             recording_id
             for recording_id, _metadata in sorted(
                 self._recordings.items(),
-                key=lambda entry: (
-                    self._parse_datetime(entry[1].get("created_at"))
-                    or datetime.min.replace(tzinfo=UTC)
-                ),
+                key=lambda entry: self._created_at_key(entry[1]),
             )
         ]
         overflow = len(ordered_ids) - max_recordings
@@ -304,6 +363,14 @@ class VoiceAnnouncementStore:
                 deleted += 1
         return deleted
 
+    def _storage_bytes(self) -> int:
+        total = 0
+        for directory in (self.original_path, self.media_path):
+            for path in directory.glob("*"):
+                if path.is_file():
+                    total += path.stat().st_size
+        return total
+
     def _is_safe_child(self, path: Path) -> bool:
         # Stored paths are always built from these directories; a lexical check
         # rejects tampered metadata without filesystem calls in the event loop.
@@ -336,6 +403,10 @@ class VoiceAnnouncementStore:
                 path = Path(raw_path)
                 if self._is_safe_child(path):
                     yield path
+
+    @classmethod
+    def _created_at_key(cls, metadata: dict[str, Any]) -> datetime:
+        return cls._parse_datetime(metadata.get("created_at")) or datetime.min.replace(tzinfo=UTC)
 
     @staticmethod
     def _parse_datetime(value: Any) -> datetime | None:

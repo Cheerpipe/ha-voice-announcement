@@ -11,6 +11,40 @@
     }
   },
   "services": {
+    "play": {
+      "name": "Reproducir anuncio",
+      "description": "Reproduce una grabación almacenada o lee un mensaje en voz alta en reproductores multimedia.",
+      "fields": {
+        "recording_id": {
+          "name": "ID de grabación",
+          "description": "La grabación a reproducir, o \"last\" para la más reciente."
+        },
+        "message": {
+          "name": "Mensaje",
+          "description": "Texto que se lee en voz alta con el motor de texto a voz. Úsalo en lugar de una grabación."
+        },
+        "tts_engine": {
+          "name": "Motor de texto a voz",
+          "description": "Motor que lee el mensaje."
+        },
+        "language": {
+          "name": "Idioma",
+          "description": "Idioma opcional del mensaje."
+        },
+        "voice": {
+          "name": "Voz",
+          "description": "Nombre opcional de la voz, tal como lo muestra el motor."
+        },
+        "cache": {
+          "name": "Guardar en caché el audio generado",
+          "description": "Reutiliza el audio cuando se envía el mismo mensaje otra vez."
+        },
+        "announce": {
+          "name": "Modo anuncio",
+          "description": "En los altavoces que lo admiten, baja la música durante el anuncio y la reanuda después."
+        }
+      }
+    },
     "cleanup": {
       "name": "Limpiar grabaciones",
       "description": "Elimina las grabaciones de anuncios de voz más antiguas que el periodo indicado.",
@@ -30,6 +64,144 @@
           "description": "Identificador de la grabación devuelto al subirla."
         }
       }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "receiving": {
+        "name": "Recibiendo"
+      },
+      "processing": {
+        "name": "Procesando"
+      },
+      "playing": {
+        "name": "Reproduciendo"
+      },
+      "speaker_playing": {
+        "name": "Reproduciendo en {speaker}"
+      },
+      "ffmpeg": {
+        "name": "FFmpeg"
+      },
+      "ffprobe": {
+        "name": "FFprobe"
+      }
+    },
+    "button": {
+      "cleanup": {
+        "name": "Limpiar grabaciones antiguas"
+      },
+      "delete_last": {
+        "name": "Eliminar última grabación"
+      }
+    },
+    "event": {
+      "recording": {
+        "name": "Grabación",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "recorded": "Grabada",
+              "deleted": "Eliminada",
+              "cleanup": "Limpieza",
+              "failed": "Subida fallida"
+            }
+          }
+        }
+      },
+      "announcement": {
+        "name": "Anuncio",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "started": "Iniciado",
+              "finished": "Terminado",
+              "failed": "Fallido"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "status": {
+        "name": "Estado",
+        "state": {
+          "idle": "Inactivo",
+          "receiving": "Recibiendo",
+          "processing": "Procesando",
+          "playing": "Reproduciendo"
+        }
+      },
+      "last_recording": {
+        "name": "Última grabación"
+      },
+      "last_duration": {
+        "name": "Duración de la última grabación"
+      },
+      "recordings_today": {
+        "name": "Grabaciones de hoy"
+      },
+      "last_announcement": {
+        "name": "Último anuncio"
+      },
+      "stored_recordings": {
+        "name": "Grabaciones almacenadas"
+      },
+      "storage_used": {
+        "name": "Espacio usado"
+      },
+      "oldest_recording": {
+        "name": "Grabación más antigua"
+      },
+      "last_upload_status": {
+        "name": "Estado de la última subida",
+        "state": {
+          "ok": "OK",
+          "rejected_too_large": "Demasiado grande",
+          "rate_limited": "Límite de envíos",
+          "invalid_audio": "Audio no válido",
+          "invalid_request": "Solicitud no válida",
+          "conversion_failed": "Error de conversión",
+          "unavailable": "No disponible",
+          "unauthorized": "No autorizado",
+          "error": "Error"
+        }
+      },
+      "failed_uploads": {
+        "name": "Subidas fallidas"
+      },
+      "last_processing_time": {
+        "name": "Tiempo del último procesamiento"
+      },
+      "transcoded_ratio": {
+        "name": "Subidas convertidas"
+      },
+      "active_uploads": {
+        "name": "Subidas en curso"
+      },
+      "last_cleanup": {
+        "name": "Última limpieza"
+      },
+      "failed_playbacks": {
+        "name": "Reproducciones fallidas"
+      }
+    }
+  },
+  "exceptions": {
+    "no_targets": {
+      "message": "Elige al menos un reproductor multimedia."
+    },
+    "too_many_targets": {
+      "message": "Elige como máximo {max} reproductores multimedia."
+    },
+    "tts_engine_required": {
+      "message": "Se necesita un motor de texto a voz para reproducir un mensaje."
+    },
+    "recording_not_found": {
+      "message": "No se encontró la grabación {recording_id}."
+    },
+    "playback_failed": {
+      "message": "No se pudo reproducir el anuncio en {targets}: {error}"
     }
   }
 }

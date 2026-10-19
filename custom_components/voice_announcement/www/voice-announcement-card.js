@@ -1810,7 +1810,12 @@ class VoiceAnnouncementCard extends HTMLElement {
         const result = await this._uploadRecording(blob, duration, targets);
         if (this._config.auto_play !== false) {
           this._setState("playing", "card.starting_playback");
-          const playPromise = this._playMedia(result.media_source_id, result.media_content_type, targets);
+          const playPromise = this._playMedia(
+            { recording_id: result.recording_id },
+            result.media_source_id,
+            result.media_content_type,
+            targets
+          );
           await this._awaitLikelyPlaybackStart(playPromise);
           const playbackStartedAt = performance.now();
           this._setState("playing", "card.playing");
@@ -2030,8 +2035,9 @@ class VoiceAnnouncementCard extends HTMLElement {
   async _uploadRecording(blob, duration, targets) {
     const mimeType = blob.type || "application/octet-stream";
     const formData = new FormData();
-    formData.append("file", blob, `announcement.${this._extensionForMime(mimeType)}`);
+    // Targets go first so the integration knows where the upload is going while it arrives.
     formData.append("entity_id", targets.join(","));
+    formData.append("file", blob, `announcement.${this._extensionForMime(mimeType)}`);
     formData.append("mime_type", mimeType);
     formData.append("duration", String(duration));
     formData.append("payload_version", "3");
@@ -2059,9 +2065,21 @@ class VoiceAnnouncementCard extends HTMLElement {
     });
   }
 
-  async _playMedia(mediaContentId, mediaContentType, targets) {
+  async _playMedia(serviceData, mediaContentId, mediaContentType, targets) {
     if (typeof this._hass?.callService !== "function") {
       throw this._localizedError("error.no_api");
+    }
+    // The integration's play service reports what is playing and where to its entities.
+    if (this._hass.services?.voice_announcement?.play) {
+      return this._hass
+        .callService("voice_announcement", "play", {
+          ...serviceData,
+          entity_id: targets,
+          announce: this._config.announce !== false,
+        })
+        .catch((err) => {
+          throw this._localizedError("error.play", err?.message);
+        });
     }
     // One call per speaker so announce mode is only requested where it is supported.
     await Promise.all(
@@ -2078,6 +2096,16 @@ class VoiceAnnouncementCard extends HTMLElement {
     ).catch((err) => {
       throw this._localizedError("error.play", err?.message);
     });
+  }
+
+  _ttsServiceData(message) {
+    return {
+      message,
+      tts_engine: this._config.tts_engine,
+      cache: this._config.tts_cache !== false,
+      ...(this._config.tts_language ? { language: this._config.tts_language } : {}),
+      ...(this._config.tts_voice ? { voice: this._config.tts_voice } : {}),
+    };
   }
 
   _ttsMediaId(message) {
@@ -2100,7 +2128,12 @@ class VoiceAnnouncementCard extends HTMLElement {
     window.clearTimeout(this._errorTimer);
     try {
       this._setState("playing", "card.starting_playback");
-      const playPromise = this._playMedia(this._ttsMediaId(message), "music", targets);
+      const playPromise = this._playMedia(
+        this._ttsServiceData(message),
+        this._ttsMediaId(message),
+        "music",
+        targets
+      );
       await this._awaitLikelyPlaybackStart(playPromise);
       const playbackStartedAt = performance.now();
       this._setState("playing", "card.speaking");

@@ -6,15 +6,20 @@ import asyncio
 import logging
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.loader import async_get_integration
 
+from .activity import VoiceAnnouncementActivity
 from .const import (
     AUTO_CLEANUP_KEEP_DAYS,
+    DATA_ACTIVITY,
     DATA_HTTP_REGISTERED,
     DATA_INITIALIZED,
     DATA_STORE,
     DATA_UPLOAD_RATE_LIMIT,
     DATA_UPLOAD_SEMAPHORE,
+    DATA_VERSION,
     DOMAIN,
     MAX_CONCURRENT_UPLOADS,
     MAX_STORED_RECORDINGS,
@@ -28,16 +33,23 @@ from .upload import VoiceAnnouncementMediaView, VoiceAnnouncementUploadView
 
 _LOGGER = logging.getLogger(__name__)
 
+PLATFORMS = [Platform.BINARY_SENSOR, Platform.BUTTON, Platform.EVENT, Platform.SENSOR]
+
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Voice Announcement from a config entry."""
     await _async_setup_once(hass)
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     _LOGGER.info("Unloading Voice Announcement integration")
+    if not await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        return False
+    if (activity := hass.data.get(DOMAIN, {}).pop(DATA_ACTIVITY, None)) is not None:
+        activity.async_stop()
     await async_unload_services(hass)
     await async_unregister_frontend(hass)
     hass.data.get(DOMAIN, {}).pop(DATA_INITIALIZED, None)
@@ -80,6 +92,10 @@ async def _async_setup_once(hass: HomeAssistant) -> None:
     store = VoiceAnnouncementStore(hass)
     await store.async_load()
     domain_data[DATA_STORE] = store
+    domain_data[DATA_VERSION] = str((await async_get_integration(hass, DOMAIN)).version)
+    activity = VoiceAnnouncementActivity(hass, store)
+    await activity.async_start()
+    domain_data[DATA_ACTIVITY] = activity
     domain_data[DATA_UPLOAD_SEMAPHORE] = asyncio.Semaphore(MAX_CONCURRENT_UPLOADS)
     domain_data[DATA_UPLOAD_RATE_LIMIT] = {}
 

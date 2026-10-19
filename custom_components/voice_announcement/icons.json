@@ -1,0 +1,52 @@
+{
+  "entity": {
+    "binary_sensor": {
+      "receiving": { "default": "mdi:upload-off", "state": { "on": "mdi:upload" } },
+      "processing": { "default": "mdi:cog-off-outline", "state": { "on": "mdi:cog-sync" } },
+      "playing": { "default": "mdi:bullhorn-outline", "state": { "on": "mdi:bullhorn" } },
+      "speaker_playing": { "default": "mdi:speaker", "state": { "on": "mdi:speaker-play" } },
+      "ffmpeg": { "default": "mdi:file-music-outline" },
+      "ffprobe": { "default": "mdi:file-search-outline" }
+    },
+    "button": {
+      "cleanup": { "default": "mdi:broom" },
+      "delete_last": { "default": "mdi:delete-clock-outline" }
+    },
+    "event": {
+      "recording": { "default": "mdi:microphone-message" },
+      "announcement": { "default": "mdi:bullhorn-variant-outline" }
+    },
+    "sensor": {
+      "status": {
+        "default": "mdi:microphone-off",
+        "state": {
+          "receiving": "mdi:upload",
+          "processing": "mdi:cog-sync",
+          "playing": "mdi:bullhorn"
+        }
+      },
+      "last_recording": { "default": "mdi:microphone-message" },
+      "last_duration": { "default": "mdi:timer-outline" },
+      "recordings_today": { "default": "mdi:counter" },
+      "last_announcement": { "default": "mdi:bullhorn-variant-outline" },
+      "stored_recordings": { "default": "mdi:folder-music-outline" },
+      "storage_used": { "default": "mdi:harddisk" },
+      "oldest_recording": { "default": "mdi:history" },
+      "last_upload_status": {
+        "default": "mdi:alert-circle-outline",
+        "state": { "ok": "mdi:check-circle-outline" }
+      },
+      "failed_uploads": { "default": "mdi:upload-off" },
+      "last_processing_time": { "default": "mdi:timer-cog-outline" },
+      "transcoded_ratio": { "default": "mdi:swap-horizontal" },
+      "active_uploads": { "default": "mdi:progress-upload" },
+      "last_cleanup": { "default": "mdi:broom" },
+      "failed_playbacks": { "default": "mdi:volume-off" }
+    }
+  },
+  "services": {
+    "play": { "service": "mdi:bullhorn" },
+    "cleanup": { "service": "mdi:broom" },
+    "delete_recording": { "service": "mdi:delete" }
+  }
+}
