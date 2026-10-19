@@ -1,0 +1,35 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Voice Announcement",
+        "description": "Adds the voice announcement card and badge to your dashboards. Choose the speakers in each card's settings."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Voice Announcement is already set up."
+    }
+  },
+  "services": {
+    "cleanup": {
+      "name": "Cleanup recordings",
+      "description": "Delete stored voice announcement recordings older than the configured retention period.",
+      "fields": {
+        "keep_days": {
+          "name": "Keep days",
+          "description": "Number of recent days to keep."
+        }
+      }
+    },
+    "delete_recording": {
+      "name": "Delete recording",
+      "description": "Delete a stored voice announcement recording.",
+      "fields": {
+        "recording_id": {
+          "name": "Recording ID",
+          "description": "The recording identifier returned by the upload endpoint."
+        }
+      }
+    }
+  }
+}

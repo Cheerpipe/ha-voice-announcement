@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local Home Assistant test configs and recordings
+/config/
+/voice_announcement/
+
+# Editors and OS files
+.vscode/
+.idea/
+.DS_Store
+._*
+*.icloud

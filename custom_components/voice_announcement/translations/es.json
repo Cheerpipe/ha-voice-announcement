@@ -1,0 +1,35 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Voice Announcement",
+        "description": "Agrega la tarjeta y el badge de anuncios de voz a tus dashboards. Los altavoces se eligen en la configuración de cada tarjeta."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Voice Announcement ya está configurado."
+    }
+  },
+  "services": {
+    "cleanup": {
+      "name": "Limpiar grabaciones",
+      "description": "Elimina las grabaciones de anuncios de voz más antiguas que el periodo indicado.",
+      "fields": {
+        "keep_days": {
+          "name": "Días a conservar",
+          "description": "Cantidad de días recientes que se conservan."
+        }
+      }
+    },
+    "delete_recording": {
+      "name": "Eliminar grabación",
+      "description": "Elimina una grabación de anuncio de voz almacenada.",
+      "fields": {
+        "recording_id": {
+          "name": "ID de grabación",
+          "description": "Identificador de la grabación devuelto al subirla."
+        }
+      }
+    }
+  }
+}
