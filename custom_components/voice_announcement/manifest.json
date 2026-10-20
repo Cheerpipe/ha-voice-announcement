@@ -10,10 +10,10 @@
     "http",
     "media_source"
   ],
-  "documentation": "https://github.com/Cheerpipe/voice-announcement",
+  "documentation": "https://github.com/Cheerpipe/ha-voice-announcement",
   "integration_type": "service",
   "iot_class": "local_push",
-  "issue_tracker": "https://github.com/Cheerpipe/voice-announcement/issues",
+  "issue_tracker": "https://github.com/Cheerpipe/ha-voice-announcement/issues",
   "requirements": [],
   "single_config_entry": true,
   "version": "0.7.0"

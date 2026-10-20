@@ -1,7 +1,7 @@
 const VOICE_ANNOUNCEMENT_TAG = "voice-announcement-card";
 const VOICE_ANNOUNCEMENT_BADGE_TAG = "voice-announcement-badge";
 const EDITOR_TAG = "voice-announcement-card-editor";
-const DOCUMENTATION_URL = "https://github.com/Cheerpipe/voice-announcement";
+const DOCUMENTATION_URL = "https://github.com/Cheerpipe/ha-voice-announcement";
 
 const DEFAULT_CONFIG = {
   layout: "horizontal",

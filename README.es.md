@@ -1,8 +1,8 @@
 # Voice Announcement para Home Assistant
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/docs/faq/custom_repositories)
-[![Validate](https://github.com/Cheerpipe/voice-announcement/actions/workflows/validate.yml/badge.svg)](https://github.com/Cheerpipe/voice-announcement/actions/workflows/validate.yml)
-[![Release](https://img.shields.io/github/v/release/Cheerpipe/voice-announcement)](https://github.com/Cheerpipe/voice-announcement/releases)
+[![Validate](https://github.com/Cheerpipe/ha-voice-announcement/actions/workflows/validate.yml/badge.svg)](https://github.com/Cheerpipe/ha-voice-announcement/actions/workflows/validate.yml)
+[![Release](https://img.shields.io/github/v/release/Cheerpipe/ha-voice-announcement)](https://github.com/Cheerpipe/ha-voice-announcement/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 *[Read in English](README.md)*
@@ -39,7 +39,7 @@ Háblale a tu casa. Presiona un botón en tu dashboard y di algo, o escribe un m
 [![Abre tu instancia de Home Assistant y este repositorio en HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Cheerpipe&repository=voice-announcement&category=integration)
 
 1. En HACS, abre el menú de la esquina superior derecha y elige **Repositorios personalizados**.
-2. Agrega `https://github.com/Cheerpipe/voice-announcement` con el tipo **Integración**.
+2. Agrega `https://github.com/Cheerpipe/ha-voice-announcement` con el tipo **Integración**.
 3. Busca **Voice Announcement**, descárgalo y reinicia Home Assistant.
 4. Ve a **Ajustes → Dispositivos y servicios → Añadir integración** y agrega **Voice Announcement**.
 
